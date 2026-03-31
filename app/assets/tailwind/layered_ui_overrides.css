@@ -1,0 +1,81 @@
+/*
+ * layered-ui-rails color overrides
+ *
+ * Uncomment and edit any variable below to customise the UI.
+ * This file is NOT overwritten by the install generator, so your
+ * changes are preserved when you upgrade layered-ui-rails.
+ *
+ * Values are HSL channels: <hue> <saturation>% <lightness>%
+ * Example:  --accent: 220 80% 55%;
+ */
+
+/* ----------------------------------------------------------------
+ * Tier 1 - Accent color
+ *
+ * Set a single brand color. Primary buttons, active tabs, and
+ * active navigation items all inherit from these two variables.
+ * ---------------------------------------------------------------- */
+
+:root {
+  /* --accent: 0 0% 9%; */
+  /* --accent-foreground: 0 0% 100%; */
+}
+
+.dark {
+  /* --accent: 0 0% 100%; */
+  /* --accent-foreground: 0 0% 9%; */
+}
+
+/* ----------------------------------------------------------------
+ * Tier 2 - Full color overrides
+ *
+ * Override any individual token. Uncomment only the ones you need.
+ * ---------------------------------------------------------------- */
+
+/*
+:root {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 13%;
+  --foreground-muted: 0 0% 29%;
+  --border: 0 0% 91%;
+  --border-control: 0 0% 55%;
+  --ring: 0 0% 13%;
+  --surface: 0 0% 96%;
+  --surface-active: 0 0% 91%;
+  --button-primary-bg: var(--accent);
+  --button-primary-text: var(--accent-foreground);
+  --danger: 0 72% 38%;
+  --danger-light: 0 100% 97%;
+  --danger-text: 0 72% 35%;
+  --success-bg: 142 76% 65%;
+  --success-text: 142 76% 13%;
+  --warning-bg: 48 96% 65%;
+  --warning-text: 48 96% 15%;
+  --error-bg: 0 84% 75%;
+  --error-text: 0 93% 12%;
+  --backdrop: 0 0% 0%;
+}
+
+.dark {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 89%;
+  --foreground-muted: 0 0% 71%;
+  --border: 0 0% 16%;
+  --border-control: 0 0% 40%;
+  --ring: 0 0% 89%;
+  --surface: 0 0% 8%;
+  --surface-active: 0 0% 16%;
+  --button-primary-bg: var(--accent);
+  --button-primary-text: var(--accent-foreground);
+  --danger: 0 85% 60%;
+  --danger-light: 0 93% 15%;
+  --danger-text: 0 85% 64%;
+  --success-bg: 142 76% 15%;
+  --success-text: 142 76% 80%;
+  --warning-bg: 48 96% 15%;
+  --warning-text: 48 96% 80%;
+  --error-bg: 0 93% 12%;
+  --error-text: 0 84% 75%;
+  --backdrop: 0 0% 0%;
+}
+*/
