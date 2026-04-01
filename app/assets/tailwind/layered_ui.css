@@ -816,7 +816,7 @@ pre.l-ui-surface {
   @apply m-0 overflow-auto;
 
   > code {
-    background: transparent;
+    @apply bg-transparent;
   }
 }
 
