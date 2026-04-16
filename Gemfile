@@ -67,4 +67,4 @@ end
 
 gem "tailwindcss-rails", "~> 4.4"
 
-gem "layered-ui-rails", "~> 0.2.0"
+gem "layered-ui-rails", "~> 0.4.0"
