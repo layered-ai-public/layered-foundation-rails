@@ -6,6 +6,18 @@ A pre-configured Rails 8.1 starter built around [layered-ui-rails](https://layer
 
 ---
 
+## Renaming the App
+
+This starter ships under the `LayeredFoundationRails` name. To rename it for your own project:
+
+```bash
+bin/rails app:rename     # Interactive — prompts for the new CamelCase name
+```
+
+The task rewrites the module/class name, the `snake_case` gem-style name, and the `dashed-name` across the codebase, replaces `README.md` and `AGENTS.md` with fresh scaffolds for you to fill in, removes itself from `lib/tasks/`, and optionally removes the `.git` directory so you can start fresh with `git init`.
+
+---
+
 ## Getting Started
 
 ```bash
