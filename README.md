@@ -1,10 +1,18 @@
 # layered-foundation-rails
 
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![CI](https://github.com/layered-ai-public/layered-foundation-rails/actions/workflows/ci.yml/badge.svg)](https://github.com/layered-ai-public/layered-foundation-rails/actions/workflows/ci.yml)
+[![WCAG 2.2 AA](https://img.shields.io/badge/WCAG_2.2-AA-green)](https://www.w3.org/WAI/WCAG22/quickref/)
+[![Website](https://img.shields.io/badge/Website-layered.ai-purple)](https://www.layered.ai/)
+[![GitHub](https://img.shields.io/badge/GitHub-layered--ui--rails-black)](https://github.com/layered-ai-public/layered-foundation-rails)
+[![Discord](https://img.shields.io/badge/Discord-join-5865F2)](https://discord.gg/aCGqz9Bx)
+[![YouTube](https://img.shields.io/badge/YouTube-subscribe-FF0000)](https://www.youtube.com/@UseLayeredAi)
+[![X](https://img.shields.io/badge/X-follow-000000)](https://x.com/UseLayeredAi)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-follow-0A66C2)](https://www.linkedin.com/company/uselayeredai/)
+
 A pre-configured Rails 8.1 starter built around [layered-ui-rails](https://layered-ui-rails.layered.ai/). Clone it, and your next Rails app starts with a solid, good-looking, accessible foundation.
 
----
-
-## Two Ways to Use This
+## To get started, choose one of the following methods
 
 **1. Quick start via Rails template** — for a minimal new app with layered-ui-rails wired up:
 
