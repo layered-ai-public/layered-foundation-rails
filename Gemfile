@@ -66,5 +66,4 @@ group :test do
 end
 
 gem "tailwindcss-rails", "~> 4.4"
-
-gem "layered-ui-rails", "~> 0.4.0"
+gem "layered-ui-rails", "~> 0.7"
