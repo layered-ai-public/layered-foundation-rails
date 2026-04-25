@@ -6,15 +6,26 @@ A pre-configured Rails 8.1 starter built around [layered-ui-rails](https://layer
 
 ---
 
-## Renaming the App
+## Two Ways to Use This
 
-This starter ships under the `LayeredFoundationRails` name. To rename it for your own project:
+**1. Quick start via Rails template** — for a minimal new app with layered-ui-rails wired up:
 
 ```bash
-bin/rails app:rename     # Interactive — prompts for the new CamelCase name
+rails new myapp --css tailwind \
+  -m https://raw.githubusercontent.com/layered-ai/layered-foundation-rails/main/template.rb
 ```
 
-The task rewrites the module/class name, the `snake_case` gem-style name, and the `dashed-name` across the codebase, replaces `README.md` and `AGENTS.md` with fresh scaffolds for you to fill in, removes itself from `lib/tasks/`, and optionally removes the `.git` directory so you can start fresh with `git init`.
+This generates a fresh Rails 8.1 app, installs `layered-ui-rails`, runs its install generator, swaps in the layered-ui layout, and adds a Hello World pages controller. Nothing else.
+
+**2. Clone the foundation repo** — for a richer starter with the full Solid suite, CI workflows, Kamal config, and (over time) batteries like Devise, Pundit, SAML, and an admin layout:
+
+```bash
+git clone https://github.com/layered-ai/layered-foundation-rails.git myapp
+cd myapp
+bin/rails app:setup      # Interactive — prompts for the new CamelCase name
+```
+
+The setup task rewrites the module/class name, the `snake_case` gem-style name, and the `dashed-name` across the codebase, replaces `README.md` and `AGENTS.md` with fresh scaffolds, removes the licensing/template files no longer needed (`LICENSE`, `NOTICE`, `TRADEMARK.md`, `CLA.md`, `template.rb`, the setup task itself), and optionally removes the `.git` directory so you can start fresh with `git init`.
 
 ---
 

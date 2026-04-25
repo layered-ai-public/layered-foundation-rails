@@ -1,6 +1,6 @@
 namespace :app do
-  desc "Rename this application (module/class, gem-style, and dasherized names) across the codebase."
-  task :rename do
+  desc "One-time setup for a freshly cloned foundation: rename the application, drop starter-only files, and optionally reset git history."
+  task :setup do
     require "fileutils"
 
     current_module     = "LayeredFoundationRails"
@@ -36,8 +36,8 @@ namespace :app do
       path = root.join(rel)
       next unless path.file?
       next if skip_dirs.any? { |d| rel == d || rel.start_with?("#{d}/") }
-      next if rel == "lib/tasks/app_rename.rake"
-      next if %w[NOTICE TRADEMARK.md CLA.md LICENSE].include?(rel)
+      next if rel == "lib/tasks/app_setup.rake"
+      next if %w[NOTICE TRADEMARK.md CLA.md LICENSE template.rb].include?(rel)
       targets << path
     end
 
@@ -99,7 +99,7 @@ namespace :app do
       puts "Reset README.md to a fresh scaffold."
     end
 
-    %w[NOTICE TRADEMARK.md CLA.md LICENSE].each do |filename|
+    %w[NOTICE TRADEMARK.md CLA.md LICENSE template.rb].each do |filename|
       file = root.join(filename)
       if file.exist?
         File.unlink(file)
@@ -121,10 +121,10 @@ namespace :app do
       end
     end
 
-    task_file = root.join("lib/tasks/app_rename.rake")
+    task_file = root.join("lib/tasks/app_setup.rake")
     if task_file.exist?
       File.unlink(task_file)
-      puts "Removed lib/tasks/app_rename.rake (no longer needed)."
+      puts "Removed lib/tasks/app_setup.rake (no longer needed)."
     end
 
     puts
