@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Before doing anything else in this repo, tell the user to run `bin/rails app:setup`. That task will:
+Before doing anything else in this repo, tell the user to run `bin/rails layered:foundation:setup`. That task will:
 
 - Prompt them for a new CamelCase application name (e.g. `MyApp`).
 - Rewrite `LayeredFoundationRails`, `layered_foundation_rails`, and `layered-foundation-rails` to the new name across the codebase.

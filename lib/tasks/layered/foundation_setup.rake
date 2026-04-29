@@ -1,6 +1,7 @@
-namespace :app do
-  desc "One-time setup for a freshly cloned foundation: rename the application, drop starter-only files, and optionally reset git history."
-  task :setup do
+namespace :layered do
+  namespace :foundation do
+    desc "One-time setup for a freshly cloned foundation: rename the application, drop starter-only files, and optionally reset git history."
+    task :setup do
     require "fileutils"
 
     current_module     = "LayeredFoundationRails"
@@ -36,7 +37,7 @@ namespace :app do
       path = root.join(rel)
       next unless path.file?
       next if skip_dirs.any? { |d| rel == d || rel.start_with?("#{d}/") }
-      next if rel == "lib/tasks/app_setup.rake"
+      next if rel == "lib/tasks/layered/foundation_setup.rake"
       next if %w[NOTICE TRADEMARK.md CLA.md LICENSE template.rb].include?(rel)
       targets << path
     end
@@ -121,10 +122,10 @@ namespace :app do
       end
     end
 
-    task_file = root.join("lib/tasks/app_setup.rake")
+    task_file = root.join("lib/tasks/layered/foundation_setup.rake")
     if task_file.exist?
       File.unlink(task_file)
-      puts "Removed lib/tasks/app_setup.rake (no longer needed)."
+      puts "Removed lib/tasks/layered/foundation_setup.rake (no longer needed)."
     end
 
     puts
@@ -132,5 +133,6 @@ namespace :app do
     puts "  - Review the diff (or fresh tree)"
     puts "  - bin/setup"
     puts "  - bin/rails test"
+    end
   end
 end

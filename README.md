@@ -23,12 +23,12 @@ rails new myapp --css tailwind \
 
 This generates a fresh Rails 8.1 app, installs `layered-ui-rails`, runs its install generator, swaps in the layered-ui layout, and adds a Hello World pages controller. Nothing else.
 
-**2. Clone the foundation repo** — for a richer starter with the full Solid suite, CI workflows, Kamal config, and (over time) batteries like Devise, Pundit, SAML, and an admin layout:
+**2. Clone the foundation repo** — to use out-of-the-box:
 
 ```bash
 git clone https://github.com/layered-ai/layered-foundation-rails.git myapp
 cd myapp
-bin/rails app:setup      # Interactive — prompts for the new CamelCase name
+bin/rails layered:foundation:setup      # Interactive — prompts for the new CamelCase name
 ```
 
 The setup task rewrites the module/class name, the `snake_case` gem-style name, and the `dashed-name` across the codebase, replaces `README.md` and `AGENTS.md` with fresh scaffolds, removes the licensing/template files no longer needed (including the setup task itself), and optionally removes the `.git` directory so you can start fresh with `git init`.
