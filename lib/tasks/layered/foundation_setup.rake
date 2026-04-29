@@ -1,18 +1,35 @@
 namespace :layered do
   namespace :foundation do
-    desc "One-time setup for a freshly cloned foundation: rename the application, drop starter-only files, and optionally reset git history."
-    task :setup do
+    desc "One-time setup for a freshly cloned foundation: rename the application, drop starter-only files, and optionally reset git history. Usage: rake \"layered:foundation:setup[MyApp]\" (set ASSUME_YES=1 for non-interactive runs)."
+    task :setup, [:name] do |_, args|
     require "fileutils"
 
     current_module     = "LayeredFoundationRails"
     current_underscore = "layered_foundation_rails"
     current_dashed     = "layered-foundation-rails"
 
-    print "New application name (CamelCase, e.g. MyApp): "
-    new_module = $stdin.gets.to_s.strip
-    abort "Aborted: name cannot be blank." if new_module.empty?
-    unless new_module =~ /\A[A-Z][A-Za-z0-9]*\z/
-      abort "Aborted: name must be CamelCase (letters/digits only, starting with an uppercase letter)."
+    name_re = /\A[A-Z][A-Za-z0-9]*\z/
+    auto_yes = %w[y yes true 1].include?(ENV["ASSUME_YES"].to_s.strip.downcase)
+    prompt_yes = ->(question) {
+      if auto_yes
+        puts "#{question} [ASSUME_YES: yes]"
+        true
+      else
+        print question
+        $stdin.gets.to_s.strip.downcase.start_with?("y")
+      end
+    }
+
+    if args[:name].to_s.strip.empty?
+      abort "Aborted: name argument is required when ASSUME_YES is set." if auto_yes
+      print "New application name (CamelCase, e.g. MyApp): "
+      new_module = $stdin.gets.to_s.strip
+      abort "Aborted: name cannot be blank." if new_module.empty?
+    else
+      new_module = args[:name].strip
+    end
+    unless new_module =~ name_re
+      abort "Aborted: name must be CamelCase (letters/digits only, starting with an uppercase letter). Got: #{new_module.inspect}"
     end
 
     new_underscore = new_module
@@ -26,8 +43,7 @@ namespace :layered do
     puts "  #{current_module}      -> #{new_module}"
     puts "  #{current_underscore}  -> #{new_underscore}"
     puts "  #{current_dashed}      -> #{new_dashed}"
-    print "Proceed? (yes/no): "
-    abort "Aborted." unless $stdin.gets.to_s.strip.downcase.start_with?("y")
+    abort "Aborted." unless prompt_yes.call("Proceed? (y/yes or n/no): ")
 
     root = Pathname.new(Dir.pwd)
     skip_dirs = %w[.git node_modules tmp log storage vendor/bundle .bundle public/assets]
@@ -109,14 +125,15 @@ namespace :layered do
     end
 
     git_dir = root.join(".git")
+    git_removed = false
     if git_dir.exist?
       puts
       puts "WARNING: removing the .git directory will erase all version-control history,"
       puts "         remotes, branches, and stashes for this working copy. This cannot be undone."
-      print "Remove .git directory? (yes/no): "
-      if $stdin.gets.to_s.strip.downcase.start_with?("y")
+      if prompt_yes.call("Remove .git directory? (y/yes or n/no): ")
         FileUtils.rm_rf(git_dir)
-        puts "Removed .git directory. Run `git init` to start a fresh repository."
+        git_removed = true
+        puts "Removed .git directory."
       else
         puts "Kept .git directory."
       end
@@ -126,6 +143,27 @@ namespace :layered do
     if task_file.exist?
       File.unlink(task_file)
       puts "Removed lib/tasks/layered/foundation_setup.rake (no longer needed)."
+    end
+
+    if git_removed
+      if prompt_yes.call("Initialize a new git repository here? (y/yes or n/no): ")
+        if system("git", "init", chdir: root.to_s)
+          if prompt_yes.call("Make an initial commit? (y/yes or n/no): ")
+            if system("git", "add", "-A", chdir: root.to_s) &&
+               system("git", "commit", "-m", "Initial commit", chdir: root.to_s)
+              puts "Created initial commit."
+            else
+              puts "Failed to create initial commit. You can run `git add -A && git commit` manually."
+            end
+          else
+            puts "Skipped initial commit."
+          end
+        else
+          puts "Failed to run `git init`. You can run it manually."
+        end
+      else
+        puts "Skipped `git init`. Run it manually when you're ready."
+      end
     end
 
     puts

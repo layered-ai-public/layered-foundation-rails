@@ -26,12 +26,19 @@ This generates a fresh Rails 8.1 app, installs `layered-ui-rails`, runs its inst
 **2. Clone the foundation repo** — to use out-of-the-box:
 
 ```bash
-git clone https://github.com/layered-ai/layered-foundation-rails.git myapp
+git clone https://github.com/layered-ai-public/layered-foundation-rails.git myapp
 cd myapp
-bin/rails layered:foundation:setup      # Interactive — prompts for the new CamelCase name
+bin/rails layered:foundation:setup            # Interactive — prompts for the new CamelCase name
+# or, one-shot non-interactive:
+ASSUME_YES=1 bin/rails "layered:foundation:setup[MyApp]"
 ```
 
-The setup task rewrites the module/class name, the `snake_case` gem-style name, and the `dashed-name` across the codebase, replaces `README.md` and `AGENTS.md` with fresh scaffolds, removes the licensing/template files no longer needed (including the setup task itself), and optionally removes the `.git` directory so you can start fresh with `git init`.
+The setup task rewrites the module/class name, the `snake_case` gem-style name, and the `dashed-name` across the codebase, replaces `README.md` and `AGENTS.md` with fresh scaffolds, removes the licensing/template files no longer needed (including the setup task itself), and optionally removes the `.git` directory. If you remove `.git`, the task can also run `git init` and create an initial commit for you.
+
+Arguments:
+
+- `name` (positional) — the new CamelCase application name (e.g. `MyApp`). Validated against `/\A[A-Z][A-Za-z0-9]*\z/`; the task aborts if the value is invalid.
+- `ASSUME_YES` (env var) — set to `1`, `y`, `yes`, or `true` to auto-confirm every prompt (proceed, remove `.git`, `git init`, initial commit). When set, the `name` argument is required.
 
 ## Contributing
 
