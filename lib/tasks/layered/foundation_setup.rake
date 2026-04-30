@@ -85,7 +85,16 @@ namespace :layered do
 
         This file is a guide for AI coding agents working in this repository. Replace this scaffold with project-specific guidance as the codebase grows.
 
-        Suggested sections to fill in:
+        ## Bundled agent skills
+
+        This app ships with project-local Claude Code skills under `.claude/skills/`:
+
+        - **layered-ui-rails** — building views with the layered-ui-rails layout, components, helpers, and Stimulus controllers.
+        - **layered-resource-rails** — defining resource classes, mounting `layered_resources` routes, and scaffolding CRUD with search/sort/pagination.
+
+        Use these skills when building out the app. They encode the conventions of the underlying gems, so prefer invoking them over guessing at APIs or hand-rolling equivalents. New views and CRUD features should generally start by consulting the relevant skill.
+
+        ## Suggested sections to fill in
 
         - **Project overview** — one paragraph on what this app does and who it's for.
         - **Commands** — how to run the dev server, tests, linters, and any custom rake tasks.
