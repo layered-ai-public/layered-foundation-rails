@@ -1,7 +1,7 @@
 namespace :layered do
   namespace :foundation do
     desc "One-time setup for a freshly cloned foundation: rename the application, drop starter-only files, and optionally reset git history. Usage: rake \"layered:foundation:setup[MyApp]\" (set ASSUME_YES=1 for non-interactive runs)."
-    task :setup, [:name] do |_, args|
+    task :setup, [ :name ] do |_, args|
     require "fileutils"
 
     current_module     = "LayeredFoundationRails"
