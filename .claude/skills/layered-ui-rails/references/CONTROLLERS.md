@@ -32,6 +32,15 @@ Responsive sidebar navigation with backdrop overlay on mobile.
 
 The layout wires this up automatically. Navigation items are populated via `content_for :l_ui_navigation_items`.
 
+## Navigation section (`l-ui--navigation-section`)
+
+Collapsible navigation section with optional localStorage persistence. Wired up automatically by `l_ui_navigation_section` when `collapsible: true`.
+
+**Targets:** `toggle`, `panel`
+**Values:** `storageKey` (String, localStorage key), `forceOpen` (Boolean)
+**Actions:** `toggle`
+**Behaviour:** The server renders the section's default open/closed state (and forces it open when it contains the active item). On `connect`, if `forceOpen` is set the stored preference is ignored; otherwise the controller restores the user's stored preference. Clicking the toggle always works (so a force-opened section can still be collapsed) and writes the new state to localStorage.
+
 ## Modal (`l-ui--modal`)
 
 Native `<dialog>` wrapper with focus trap, scroll lock, and focus restoration.
@@ -47,7 +56,7 @@ Native `<dialog>` wrapper with focus trap, scroll lock, and focus restoration.
   <dialog data-l-ui--modal-target="dialog" class="l-ui-modal">
     <div class="l-ui-modal__header">
       <h2>Title</h2>
-      <button data-action="click->l-ui--modal#close" class="l-ui-button--icon">
+      <button data-action="click->l-ui--modal#close" class="l-ui-button l-ui-button--icon">
         Close
       </button>
     </div>
@@ -73,7 +82,7 @@ Accessible tabbed interface with keyboard navigation.
 **Keyboard:** Arrow Left/Right, Home, End
 
 ```html
-<div data-controller="l-ui--tabs">
+<div class="l-ui-tabs" data-controller="l-ui--tabs">
   <div role="tablist" class="l-ui-tabs__list">
     <button role="tab" data-l-ui--tabs-target="tab"
             data-action="click->l-ui--tabs#select keydown->l-ui--tabs#keydown"
@@ -131,7 +140,7 @@ Drag handle for resizing the panel width on desktop.
 **Keyboard:** Arrow Left/Right (10px), Shift+Arrow (50px), Home/End
 **Storage key:** `panelWidth` (pixel value)
 
-- Min width: 240px
+- Min width: 256px
 - Default width: 480px
 - Double-click handle to reset to default
 
