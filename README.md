@@ -40,6 +40,28 @@ Arguments:
 - `name` (positional) — the new CamelCase application name (e.g. `MyApp`). Validated against `/\A[A-Z][A-Za-z0-9]*\z/`; the task aborts if the value is invalid.
 - `ASSUME_YES` (env var) — set to `1`, `y`, `yes`, or `true` to auto-confirm every prompt (proceed, remove `.git`, `git init`, initial commit). When set, the `name` argument is required.
 
+## Deploying with Kamal
+
+This repo ships a [`kamal-deploy`](.claude/skills/kamal-deploy/SKILL.md) Claude Code skill that wires `config/deploy.yml` and `.kamal/secrets` to a standard single-server target. It assumes:
+
+- **One Ubuntu server** at a single public IP — no load balancer, no separate job host.
+- **`ubuntu` SSH user** (default on Ubuntu cloud images), added to the `docker` group during server bootstrap. Root SSH is not used.
+- **SQLite** on a persistent named Docker volume — survives redeploys, no separate DB service.
+- **Let's Encrypt SSL** terminated by `kamal-proxy` on the same box; requires DNS for the domain to point at the server.
+- **Local registry** (`localhost:5555`) tunnelled over SSH — no Docker Hub / GHCR account required.
+- **ENV-driven target** so the committed config is reusable across environments:
+
+  ```bash
+  export KAMAL_DEPLOY_IP=178.128.44.128
+  export KAMAL_DEPLOY_DOMAIN=app.example.com
+  export KAMAL_SSH_KEY=~/.ssh/your_server_key
+
+  bin/kamal setup        # first time only
+  bin/kamal deploy
+  ```
+
+See the skill for the full first-time recipe (server bootstrap, `db:setup`, optional hardening) and the "when to outgrow this setup" notes.
+
 ## Contributing
 
 This project is still in its early days. We welcome issues, feedback, and ideas - they genuinely help shape the direction of the project. That said, we're holding off on accepting pull requests for now to stay focused on getting the foundations right. Thank you for your patience and interest. See [CLA.md](CLA.md) for the full policy.
