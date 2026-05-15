@@ -23,7 +23,7 @@ The Rails getting-started guide (<https://guides.rubyonrails.org/getting_started
 Before deploying, confirm:
 
 1. **Docker is running locally** — Kamal builds the image on your workstation.
-2. **The server is reachable** — `ssh root@$KAMAL_DEPLOY_IP` succeeds with the key you'll pass as `KAMAL_SSH_KEY`. Kamal bootstraps Docker on the server on first run.
+2. **The server is reachable** — `ssh -i $KAMAL_SSH_KEY ubuntu@$KAMAL_DEPLOY_IP` succeeds. Root SSH is typically disabled on Ubuntu cloud images, which is why we deploy as `ubuntu`.
 3. **DNS points the domain at the server** — `dig +short $KAMAL_DEPLOY_DOMAIN` returns `$KAMAL_DEPLOY_IP`. Let's Encrypt issuance fails otherwise.
 4. **`config/master.key` exists** — `.kamal/secrets` reads it for `RAILS_MASTER_KEY`. If missing, generate credentials with `bin/rails credentials:edit` before deploying.
 
@@ -96,16 +96,21 @@ export KAMAL_SSH_KEY=~/.ssh/your_server_key
 # First time only: bootstraps Docker + kamal-proxy on the server, then deploys.
 bin/kamal setup
 
-# First time only: create the SQLite database and load schema/seeds.
-# DISABLE_DATABASE_ENVIRONMENT_CHECK skips the "you're about to wipe production" guard
-# — only safe on a brand-new server where the volume is empty.
-bin/kamal app exec "bin/rails db:setup DISABLE_DATABASE_ENVIRONMENT_CHECK=1"
-
-# Subsequent deploys (migrations run automatically via the release process):
+# Subsequent deploys:
 bin/kamal deploy
 ```
 
 For repeated use, put the exports in a `.env.deploy` (gitignored) and `source` it before deploying — keeps the IP/domain out of shell history.
+
+### Database initialisation
+
+You don't need to run `db:setup` manually. The Rails 8 `bin/docker-entrypoint` runs `bin/rails db:prepare` before booting the server, which on a fresh SQLite volume creates the DB, loads `schema.rb`, and runs `db:seeds`. On subsequent deploys it migrates any pending changes.
+
+If you ever need to force a reset (destructive — wipes the SQLite file in the volume):
+
+```bash
+bin/kamal app exec "bin/rails db:reset DISABLE_DATABASE_ENVIRONMENT_CHECK=1"
+```
 
 ## Common operations
 
@@ -129,7 +134,7 @@ Other useful commands:
 
 - **`KAMAL_DEPLOY_IP` unset** — `ENV.fetch` raises before Kamal opens an SSH connection. Re-`source` your env file.
 - **Let's Encrypt fails with "no A record"** — DNS hasn't propagated, or the domain points elsewhere. Verify with `dig +short`.
-- **`Error response from daemon: ... localhost:5555`** — the local registry tunnel didn't come up. Usually means the SSH key can't auth as root; test with `ssh -i $KAMAL_SSH_KEY root@$KAMAL_DEPLOY_IP`.
+- **`Error response from daemon: ... localhost:5555`** — the local registry tunnel didn't come up. Two likely causes: (a) the SSH key can't auth — test with `ssh -i $KAMAL_SSH_KEY ubuntu@$KAMAL_DEPLOY_IP`; (b) the `ubuntu` user isn't yet in the `docker` group, or the membership hasn't taken effect — re-run the server bootstrap and start a fresh SSH session before retrying.
 - **SQLite data vanished after a deploy** — the named volume in `volumes:` was renamed. Volume names are derived from the `service:` value; renaming the service orphans the old volume. `docker volume ls` on the server shows what's there.
 - **Asset 404s right after deploy** — `asset_path: /rails/public/assets` (already in the generated config) handles the cross-version bridge; don't remove it.
 
