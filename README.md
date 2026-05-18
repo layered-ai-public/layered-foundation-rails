@@ -44,8 +44,8 @@ Arguments:
 
 This repo ships a [`kamal-deploy`](.claude/skills/kamal-deploy/SKILL.md) Claude Code skill that wires `config/deploy.yml` and `.kamal/secrets` to a standard single-server target. It assumes:
 
-- **One Ubuntu server** at a single public IP — no load balancer, no separate job host.
-- **`ubuntu` SSH user** (default on Ubuntu cloud images), added to the `docker` group during server bootstrap. Root SSH is not used.
+- **One Ubuntu/Debian server** at a single public IP — no load balancer, no separate job host.
+- **Root SSH** by default (works on most stock Ubuntu/Debian cloud images). Switch `ssh.user:` in `config/deploy.yml` if your image disables root login.
 - **SQLite** on a persistent named Docker volume — survives redeploys, no separate DB service.
 - **Let's Encrypt SSL** terminated by `kamal-proxy` on the same box; requires DNS for the domain to point at the server.
 - **Local registry** (`localhost:5555`) tunnelled over SSH — no Docker Hub / GHCR account required.
@@ -60,7 +60,7 @@ This repo ships a [`kamal-deploy`](.claude/skills/kamal-deploy/SKILL.md) Claude 
   bin/kamal deploy
   ```
 
-See the skill for the full first-time recipe (server bootstrap, `db:setup`, optional hardening) and the "when to outgrow this setup" notes.
+See the skill for the full first-time recipe (server bootstrap, database initialisation, optional hardening) and the "when to outgrow this setup" notes.
 
 ## Contributing
 

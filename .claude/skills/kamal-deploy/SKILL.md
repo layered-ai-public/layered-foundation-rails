@@ -23,7 +23,7 @@ The Rails getting-started guide (<https://guides.rubyonrails.org/getting_started
 Before deploying, confirm:
 
 1. **Docker is running locally** — Kamal builds the image on your workstation.
-2. **The server is reachable** — `ssh -i $KAMAL_SSH_KEY ubuntu@$KAMAL_DEPLOY_IP` succeeds. Root SSH is typically disabled on Ubuntu cloud images, which is why we deploy as `ubuntu`.
+2. **The server is reachable** — `ssh -i $KAMAL_SSH_KEY root@$KAMAL_DEPLOY_IP` succeeds. If the image disables root SSH, switch the configured user (see "SSH user" below).
 3. **DNS points the domain at the server** — `dig +short $KAMAL_DEPLOY_DOMAIN` returns `$KAMAL_DEPLOY_IP`. Let's Encrypt issuance fails otherwise.
 4. **`config/master.key` exists** — `.kamal/secrets` reads it for `RAILS_MASTER_KEY`. If missing, generate credentials with `bin/rails credentials:edit` before deploying.
 
@@ -44,7 +44,7 @@ proxy:
   app_port: 3000
 
 ssh:
-  user: ubuntu
+  user: root
   keys:
     - <%= ENV["KAMAL_SSH_KEY"] || "~/.ssh/id_rsa" %>
 ```
@@ -52,7 +52,7 @@ ssh:
 Notes:
 
 - Use `ENV.fetch` (not `ENV[]`) for IP and domain so a missing value fails loudly instead of deploying nowhere.
-- `ssh.user: ubuntu` — we deploy as the default non-root user on Ubuntu cloud images. Root SSH is typically disabled on hardened images and would fail. The user must be in the `docker` group before `kamal setup` runs (see "Server bootstrap" below).
+- `ssh.user: root` is the default — works out of the box on most stock Ubuntu/Debian cloud images. See "SSH user" below if your image disables root SSH.
 - `proxy.ssl: true` enables Let's Encrypt. Rails 8's generated `config/environments/production.rb` already sets `config.assume_ssl` and `config.force_ssl` — leave them on.
 - Keep the default `volumes:` entry (`<service>_storage:/rails/storage`); it's where SQLite and Active Storage files live.
 - Keep `registry.server: localhost:5555` for the single-server setup.
@@ -64,25 +64,29 @@ The generated `.kamal/secrets` already contains `RAILS_MASTER_KEY=$(cat config/m
 
 ## Server bootstrap (before `kamal setup`)
 
-`kamal setup` installs Docker via `get.docker.com` and creates the `kamal` network — but it does **not** patch the OS, install missing utilities, or grant the SSH user Docker access. On a fresh Ubuntu box, do this once as `ubuntu` over SSH before running `kamal setup`:
+`kamal setup` installs Docker via `get.docker.com` and creates the `kamal` network — but it does **not** patch the OS or install other utilities. On a fresh box, do this once as root before running `kamal setup`:
 
 ```bash
-ssh -i $KAMAL_SSH_KEY ubuntu@$KAMAL_DEPLOY_IP bash <<'EOF'
+ssh -i $KAMAL_SSH_KEY root@$KAMAL_DEPLOY_IP bash <<'EOF'
 set -e
-sudo apt update
-sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y
-sudo apt install -y docker.io curl
-sudo usermod -aG docker ubuntu
+apt update
+DEBIAN_FRONTEND=noninteractive apt upgrade -y
+apt install -y docker.io curl
 EOF
 ```
 
-Then **close and re-open the SSH session** (or run the next step in a new shell) so the new group membership takes effect — otherwise `kamal setup` will hit "permission denied" talking to the Docker socket.
-
 Optional hardening worth doing on a server that faces the public internet:
 
-- `sudo ufw allow 22,80,443/tcp && sudo ufw enable` — only kamal-proxy + SSH need to be reachable.
-- `sudo apt install -y unattended-upgrades fail2ban` — automatic security patches and brute-force protection.
+- `ufw allow 22,80,443/tcp && ufw enable` — only kamal-proxy + SSH need to be reachable.
+- `apt install -y unattended-upgrades fail2ban` — automatic security patches and brute-force protection.
 - Disable password SSH in `/etc/ssh/sshd_config` (`PasswordAuthentication no`) once key-based auth is verified working.
+
+### SSH user
+
+The skill (and `config/deploy.yml`) assumes root SSH is enabled — true for most stock Ubuntu/Debian cloud images. If your image disables root login (some hardened AMIs / locked-down images), instead:
+
+1. Set `ssh.user:` in `config/deploy.yml` to the login user (e.g. `ubuntu`, `admin`, `ec2-user`).
+2. Add that user to the `docker` group **before** running `kamal setup` — otherwise Kamal hits "permission denied" on the Docker socket. Run the bootstrap as that user with `sudo`, plus `sudo usermod -aG docker <user>`, then close and re-open the SSH session so group membership takes effect.
 
 ## Deploy
 
@@ -134,7 +138,7 @@ Other useful commands:
 
 - **`KAMAL_DEPLOY_IP` unset** — `ENV.fetch` raises before Kamal opens an SSH connection. Re-`source` your env file.
 - **Let's Encrypt fails with "no A record"** — DNS hasn't propagated, or the domain points elsewhere. Verify with `dig +short`.
-- **`Error response from daemon: ... localhost:5555`** — the local registry tunnel didn't come up. Two likely causes: (a) the SSH key can't auth — test with `ssh -i $KAMAL_SSH_KEY ubuntu@$KAMAL_DEPLOY_IP`; (b) the `ubuntu` user isn't yet in the `docker` group, or the membership hasn't taken effect — re-run the server bootstrap and start a fresh SSH session before retrying.
+- **`Error response from daemon: ... localhost:5555`** — the local registry tunnel didn't come up. Usually means the SSH key can't auth as the configured user; test with `ssh -i $KAMAL_SSH_KEY <ssh.user>@$KAMAL_DEPLOY_IP`. If you're using a non-root user, also confirm it's in the `docker` group (see "SSH user").
 - **SQLite data vanished after a deploy** — the named volume in `volumes:` was renamed. Volume names are derived from the `service:` value; renaming the service orphans the old volume. `docker volume ls` on the server shows what's there.
 - **Asset 404s right after deploy** — `asset_path: /rails/public/assets` (already in the generated config) handles the cross-version bridge; don't remove it.
 

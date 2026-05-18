@@ -86,10 +86,11 @@ builder:
   #   - GITHUB_TOKEN
   #   - RAILS_MASTER_KEY
 
-# Deploy as the default Ubuntu cloud-image user. The user must be in the docker group
-# before `kamal setup` runs (see .claude/skills/kamal-deploy/SKILL.md).
+# Default: log in as root. On images where root SSH is disabled (some hardened
+# Ubuntu cloud images), switch `user:` to e.g. `ubuntu` and add that user to
+# the `docker` group before running `kamal setup`.
 ssh:
-  user: ubuntu
+  user: root
   keys:
     - <%= ENV["KAMAL_SSH_KEY"] || "~/.ssh/id_rsa" %>
 
