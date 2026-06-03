@@ -30,15 +30,27 @@ git clone https://github.com/layered-ai-public/layered-foundation-rails.git myap
 cd myapp
 bin/rails layered:foundation:setup            # Interactive - prompts for the new CamelCase name
 # or, one-shot non-interactive:
-ASSUME_YES=1 bin/rails "layered:foundation:setup[MyApp]"
+NON_INTERACTIVE=1 bin/rails "layered:foundation:setup[MyApp]"
 ```
 
-The setup task rewrites the module/class name, the `snake_case` gem-style name, and the `dashed-name` across the codebase, replaces `README.md` and `AGENTS.md` with fresh scaffolds, removes the licensing/template files no longer needed (including the setup task itself), and optionally removes the `.git` directory. If you remove `.git`, the task can also run `git init` and create an initial commit for you.
+The setup task rewrites the module/class name, the `snake_case` gem-style name, and the `dashed-name` across the codebase, replaces `README.md` and `AGENTS.md` with fresh scaffolds, and removes the licensing/template files no longer needed (including the setup task itself). It does not touch git - resetting history is a separate task (see below).
 
 Arguments:
 
 - `name` (positional) - the new CamelCase application name (e.g. `MyApp`). Validated against `/\A[A-Z][A-Za-z0-9]*\z/`; the task aborts if the value is invalid.
-- `ASSUME_YES` (env var) - set to `1`, `y`, `yes`, or `true` to auto-confirm every prompt (proceed, remove `.git`, `git init`, initial commit). When set, the `name` argument is required.
+- `NON_INTERACTIVE` (env var) - set to `1`, `y`, `yes`, or `true` to auto-confirm every prompt. When set, the `name` argument is required.
+
+### Resetting git history (optional)
+
+The starter's git history isn't yours, so a separate task can wipe it for a clean slate: it removes the `.git` directory and optionally re-initialises a fresh repo (on `main`) with an initial commit.
+
+```bash
+bin/rails layered:foundation:reset_git            # Interactive - prompts before each step
+# or, one-shot non-interactive:
+NON_INTERACTIVE=1 bin/rails layered:foundation:reset_git
+```
+
+`NON_INTERACTIVE` auto-confirms every prompt (remove `.git`, `git init`, initial commit).
 
 ## Deploying with Kamal
 

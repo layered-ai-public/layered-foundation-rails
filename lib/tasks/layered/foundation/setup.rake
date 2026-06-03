@@ -1,6 +1,6 @@
 namespace :layered do
   namespace :foundation do
-    desc "One-time setup for a freshly cloned foundation: rename the application, drop starter-only files, and optionally reset git history. Usage: rake \"layered:foundation:setup[MyApp]\" (set ASSUME_YES=1 for non-interactive runs)."
+    desc "One-time setup for a freshly cloned foundation: rename the application and drop starter-only files. Usage: rake \"layered:foundation:setup[MyApp]\" (set NON_INTERACTIVE=1 for non-interactive runs). To reset git history afterwards, run layered:foundation:reset_git."
     task :setup, [ :name ] do |_, args|
     require "fileutils"
 
@@ -9,10 +9,10 @@ namespace :layered do
     current_dashed     = "layered-foundation-rails"
 
     name_re = /\A[A-Z][A-Za-z0-9]*\z/
-    auto_yes = %w[y yes true 1].include?(ENV["ASSUME_YES"].to_s.strip.downcase)
+    auto_yes = %w[y yes true 1].include?(ENV["NON_INTERACTIVE"].to_s.strip.downcase)
     prompt_yes = ->(question) {
       if auto_yes
-        puts "#{question} [ASSUME_YES: yes]"
+        puts "#{question} [NON_INTERACTIVE: yes]"
         true
       else
         print question
@@ -21,7 +21,7 @@ namespace :layered do
     }
 
     if args[:name].to_s.strip.empty?
-      abort "Aborted: name argument is required when ASSUME_YES is set." if auto_yes
+      abort "Aborted: name argument is required when NON_INTERACTIVE is set." if auto_yes
       print "New application name (CamelCase, e.g. MyApp): "
       new_module = $stdin.gets.to_s.strip
       abort "Aborted: name cannot be blank." if new_module.empty?
@@ -53,7 +53,7 @@ namespace :layered do
       path = root.join(rel)
       next unless path.file?
       next if skip_dirs.any? { |d| rel == d || rel.start_with?("#{d}/") }
-      next if rel == "lib/tasks/layered/foundation_setup.rake"
+      next if rel == "lib/tasks/layered/foundation/setup.rake"
       next if %w[NOTICE TRADEMARK.md CLA.md LICENSE template.rb].include?(rel)
       targets << path
     end
@@ -133,46 +133,10 @@ namespace :layered do
       end
     end
 
-    git_dir = root.join(".git")
-    git_removed = false
-    if git_dir.exist?
-      puts
-      puts "WARNING: removing the .git directory will erase all version-control history,"
-      puts "         remotes, branches, and stashes for this working copy. This cannot be undone."
-      if prompt_yes.call("Remove .git directory? (y/yes or n/no): ")
-        FileUtils.rm_rf(git_dir)
-        git_removed = true
-        puts "Removed .git directory."
-      else
-        puts "Kept .git directory."
-      end
-    end
-
-    task_file = root.join("lib/tasks/layered/foundation_setup.rake")
+    task_file = root.join("lib/tasks/layered/foundation/setup.rake")
     if task_file.exist?
       File.unlink(task_file)
-      puts "Removed lib/tasks/layered/foundation_setup.rake (no longer needed)."
-    end
-
-    if git_removed
-      if prompt_yes.call("Initialize a new git repository here? (y/yes or n/no): ")
-        if system("git", "init", chdir: root.to_s)
-          if prompt_yes.call("Make an initial commit? (y/yes or n/no): ")
-            if system("git", "add", "-A", chdir: root.to_s) &&
-               system("git", "commit", "-m", "Initial commit", chdir: root.to_s)
-              puts "Created initial commit."
-            else
-              puts "Failed to create initial commit. You can run `git add -A && git commit` manually."
-            end
-          else
-            puts "Skipped initial commit."
-          end
-        else
-          puts "Failed to run `git init`. You can run it manually."
-        end
-      else
-        puts "Skipped `git init`. Run it manually when you're ready."
-      end
+      puts "Removed lib/tasks/layered/foundation/setup.rake (no longer needed)."
     end
 
     puts
@@ -180,6 +144,7 @@ namespace :layered do
     puts "  - Review the diff (or fresh tree)"
     puts "  - bin/setup"
     puts "  - bin/rails test"
+    puts "  - Optionally reset git history with: rake \"layered:foundation:reset_git\""
     end
   end
 end
