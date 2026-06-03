@@ -14,7 +14,7 @@ A pre-configured Rails 8.1 starter built around [layered-ui-rails](https://layer
 
 ## To get started, choose one of the following methods
 
-**1. Quick start via Rails template** — for a minimal new app with layered-ui-rails wired up:
+**1. Quick start via Rails template** - for a minimal new app with layered-ui-rails wired up:
 
 ```bash
 rails new myapp --css tailwind \
@@ -23,12 +23,12 @@ rails new myapp --css tailwind \
 
 This generates a fresh Rails 8.1 app, installs `layered-ui-rails`, runs its install generator, swaps in the layered-ui layout, and adds a Hello World pages controller. Nothing else.
 
-**2. Clone the foundation repo** — to use out-of-the-box:
+**2. Clone the foundation repo** - to use out-of-the-box:
 
 ```bash
 git clone https://github.com/layered-ai-public/layered-foundation-rails.git myapp
 cd myapp
-bin/rails layered:foundation:setup            # Interactive — prompts for the new CamelCase name
+bin/rails layered:foundation:setup            # Interactive - prompts for the new CamelCase name
 # or, one-shot non-interactive:
 ASSUME_YES=1 bin/rails "layered:foundation:setup[MyApp]"
 ```
@@ -37,18 +37,18 @@ The setup task rewrites the module/class name, the `snake_case` gem-style name, 
 
 Arguments:
 
-- `name` (positional) — the new CamelCase application name (e.g. `MyApp`). Validated against `/\A[A-Z][A-Za-z0-9]*\z/`; the task aborts if the value is invalid.
-- `ASSUME_YES` (env var) — set to `1`, `y`, `yes`, or `true` to auto-confirm every prompt (proceed, remove `.git`, `git init`, initial commit). When set, the `name` argument is required.
+- `name` (positional) - the new CamelCase application name (e.g. `MyApp`). Validated against `/\A[A-Z][A-Za-z0-9]*\z/`; the task aborts if the value is invalid.
+- `ASSUME_YES` (env var) - set to `1`, `y`, `yes`, or `true` to auto-confirm every prompt (proceed, remove `.git`, `git init`, initial commit). When set, the `name` argument is required.
 
 ## Deploying with Kamal
 
 This repo ships a [`kamal-deploy`](.claude/skills/kamal-deploy/SKILL.md) Claude Code skill that wires `config/deploy.yml` and `.kamal/secrets` to a standard single-server target. It assumes:
 
-- **One Ubuntu/Debian server** at a single public IP — no load balancer, no separate job host.
+- **One Ubuntu/Debian server** at a single public IP - no load balancer, no separate job host.
 - **Root SSH** by default (works on most stock Ubuntu/Debian cloud images). Switch `ssh.user:` in `config/deploy.yml` if your image disables root login.
-- **SQLite** on a persistent named Docker volume — survives redeploys, no separate DB service.
+- **SQLite** on a persistent named Docker volume - survives redeploys, no separate DB service.
 - **Let's Encrypt SSL** terminated by `kamal-proxy` on the same box; requires DNS for the domain to point at the server.
-- **Local registry** (`localhost:5555`) tunnelled over SSH — no Docker Hub / GHCR account required.
+- **Local registry** (`localhost:5555`) tunnelled over SSH - no Docker Hub / GHCR account required.
 - **ENV-driven target** so the committed config is reusable across environments:
 
   ```bash

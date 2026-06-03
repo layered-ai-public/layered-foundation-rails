@@ -89,21 +89,21 @@ namespace :layered do
 
         This app ships with project-local Claude Code skills under `.claude/skills/`:
 
-        - **layered-ui-rails** — building views with the layered-ui-rails layout, components, helpers, and Stimulus controllers.
-        - **layered-resource-rails** — defining resource classes, mounting `layered_resources` routes, and scaffolding CRUD with search/sort/pagination.
+        - **layered-ui-rails** - building views with the layered-ui-rails layout, components, helpers, and Stimulus controllers.
+        - **layered-resource-rails** - defining resource classes, mounting `layered_resources` routes, and scaffolding CRUD with search/sort/pagination.
 
         Use these skills when building out the app. They encode the conventions of the underlying gems, so prefer invoking them over guessing at APIs or hand-rolling equivalents. New views and CRUD features should generally start by consulting the relevant skill.
 
         ## Suggested sections to fill in
 
-        - **Project overview** — one paragraph on what this app does and who it's for.
-        - **Commands** — how to run the dev server, tests, linters, and any custom rake tasks.
-        - **Architecture** — the key stack choices, where domain logic lives, and any conventions an agent should follow (naming, file layout, testing style).
-        - **Domain glossary** — terms specific to this product that an agent wouldn't infer from the code alone.
-        - **Do / don't** — guardrails: things to always do (e.g. "run `bin/rubocop -a` before committing") and things to avoid (e.g. "don't add new gems without discussion").
-        - **External systems** — pointers to issue trackers, dashboards, runbooks, or docs that live outside this repo.
+        - **Project overview** - one paragraph on what this app does and who it's for.
+        - **Commands** - how to run the dev server, tests, linters, and any custom rake tasks.
+        - **Architecture** - the key stack choices, where domain logic lives, and any conventions an agent should follow (naming, file layout, testing style).
+        - **Domain glossary** - terms specific to this product that an agent wouldn't infer from the code alone.
+        - **Do / don't** - guardrails: things to always do (e.g. "run `bin/rubocop -a` before committing") and things to avoid (e.g. "don't add new gems without discussion").
+        - **External systems** - pointers to issue trackers, dashboards, runbooks, or docs that live outside this repo.
 
-        Keep it concise — agents read this on every task, so prefer high-signal notes over exhaustive documentation.
+        Keep it concise - agents read this on every task, so prefer high-signal notes over exhaustive documentation.
       MD
       puts "Reset AGENTS.md to a fresh scaffold."
     end
