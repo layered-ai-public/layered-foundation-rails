@@ -20,6 +20,10 @@ after_bundle do
 
   remove_file "app/views/layouts/application.html.erb"
   create_file "app/views/layouts/application.html.erb", <<~ERB
+    <% content_for :l_ui_navigation_items do %>
+      <%= l_ui_navigation_item "Home", root_path, icon: "home" %>
+    <% end %>
+
     <%= render template: "layouts/layered_ui/application" %>
   ERB
 
@@ -41,6 +45,11 @@ after_bundle do
     <p class="mt-4">
       To add an AI chat assistant to your app, see:
       <a href="https://layered-assistant-rails.layered.ai/" target="_blank" rel="noopener noreferrer">layered-assistant-rails</a>.
+    </p>
+
+    <p class="mt-4">
+      To scaffold index, show, new, and edit screens from a single resource class, with search, sort, and pagination on top of layered-ui, see:
+      <a href="https://layered-resource-rails.layered.ai/" target="_blank" rel="noopener noreferrer">layered-resource-rails</a>.
     </p>
   ERB
 

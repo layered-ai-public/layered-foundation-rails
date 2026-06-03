@@ -65,7 +65,15 @@ group :test do
   gem "selenium-webdriver"
 end
 
+# tailwindcss-rails
 gem "tailwindcss-rails", "~> 4.4"
-gem "layered-ui-rails", github: "layered-ai-public/layered-ui-rails"
+
+# layered-ui-rails
+gem "layered-ui-rails", '~> 0.17'
+# gem "layered-ui-rails", github: "layered-ai-public/layered-ui-rails"
+
+# layered-assistant-rails
 # gem "layered-assistant-rails", github: "layered-ai-public/layered-assistant-rails"
+
+# layered-resource-rails
 # gem "layered-resource-rails", github: "layered-ai-public/layered-resource-rails"
