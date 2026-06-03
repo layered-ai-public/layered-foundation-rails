@@ -5,14 +5,13 @@ Before doing anything else in this repo, the application needs to be renamed via
 ## Preferred route: run it for them
 
 1. Ask the user for the new CamelCase application name (e.g. `MyApp`). Validate it against `/\A[A-Z][A-Za-z0-9]*\z/` before proceeding.
-2. Confirm whether they want the `.git` directory removed and a fresh repo initialised with an initial commit. (Default to "yes" unless they say otherwise - this repo is a starter, the existing git history isn't theirs.)
-3. Run the task non-interactively:
+2. Run the task non-interactively:
 
    ```bash
-   ASSUME_YES=1 bin/rails "layered:foundation:setup[MyApp]"
+   NON_INTERACTIVE=1 bin/rails "layered:foundation:setup[MyApp]"
    ```
 
-   `ASSUME_YES` auto-confirms every prompt (proceed, remove `.git`, `git init`, initial commit). If the user wants to keep the existing `.git`, run interactively instead - there is no per-prompt override.
+   `NON_INTERACTIVE` auto-confirms every prompt. Run interactively instead if the user wants to answer prompt-by-prompt - there is no per-prompt override.
 
 ## Fallback: have them run it interactively
 
@@ -29,4 +28,13 @@ bin/rails layered:foundation:setup
 - Rewrites `LayeredFoundationRails`, `layered_foundation_rails`, and `layered-foundation-rails` to the new name across the codebase.
 - Drops starter-only files (`LICENSE`, `NOTICE`, `TRADEMARK.md`, `CLA.md`, `template.rb`, and the setup task itself).
 - Replaces `README.md` and this `AGENTS.md` file with fresh scaffolds for the user (and their agents) to build on.
-- Optionally removes the `.git` directory, and if removed, optionally runs `git init` and creates an initial commit.
+
+## Resetting git history (optional, separate task)
+
+This repo is a starter, so the existing git history isn't the user's. If they want a clean slate, a separate task removes the `.git` directory and optionally re-initialises a fresh repo with an initial commit. Don't run this as part of the default setup route - only offer it if the user asks, then run:
+
+```bash
+NON_INTERACTIVE=1 bin/rails layered:foundation:reset_git
+```
+
+`NON_INTERACTIVE` auto-confirms removing `.git`, running `git init`, and the initial commit. Run it interactively (`bin/rails layered:foundation:reset_git`) if they want to answer prompt-by-prompt.
