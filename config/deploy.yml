@@ -4,25 +4,21 @@ service: layered_foundation_rails
 # Name of the container image (use your-user/app-name on external registries).
 image: layered_foundation_rails
 
-# Deploy to these servers.
+# Deploy to these servers. KAMAL_DEPLOY_IP must be exported before running kamal commands.
 servers:
   web:
-    - 192.168.0.1
+    - <%= ENV.fetch("KAMAL_DEPLOY_IP") %>
   # job:
   #   hosts:
-  #     - 192.168.0.1
+  #     - <%= ENV.fetch("KAMAL_DEPLOY_IP") %>
   #   cmd: bin/jobs
 
-# Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
-# If used with Cloudflare, set encryption mode in SSL/TLS setting to "Full" to enable CF-to-app encryption.
-#
-# Using an SSL proxy like this requires turning on config.assume_ssl and config.force_ssl in production.rb!
-#
-# Don't use this when deploying to multiple web servers (then you have to terminate SSL at your load balancer).
-#
-# proxy:
-#   ssl: true
-#   host: app.example.com
+# Let's Encrypt SSL via kamal-proxy. Requires DNS for KAMAL_DEPLOY_DOMAIN to point at KAMAL_DEPLOY_IP.
+# Rails 8's generated production.rb already enables config.assume_ssl and config.force_ssl.
+proxy:
+  ssl: true
+  host: <%= ENV.fetch("KAMAL_DEPLOY_DOMAIN") %>
+  app_port: 3000
 
 # Where you keep your container images.
 registry:
@@ -90,9 +86,13 @@ builder:
   #   - GITHUB_TOKEN
   #   - RAILS_MASTER_KEY
 
-# Use a different ssh user than root
-# ssh:
-#   user: app
+# Default: log in as root. On images where root SSH is disabled (some hardened
+# Ubuntu cloud images), switch `user:` to e.g. `ubuntu` and add that user to
+# the `docker` group before running `kamal setup`.
+ssh:
+  user: root
+  keys:
+    - <%= ENV["KAMAL_SSH_KEY"] || "~/.ssh/id_rsa" %>
 
 # Use accessory services (secrets come from .kamal/secrets).
 # accessories:
