@@ -18,7 +18,7 @@ A pre-configured Rails 8.1 starter built around [layered-ui-rails](https://layer
 
 ```bash
 rails new myapp --css tailwind \
-  -m https://raw.githubusercontent.com/layered-ai/layered-foundation-rails/main/template.rb
+  -m https://raw.githubusercontent.com/layered-ai-public/layered-foundation-rails/main/template.rb
 ```
 
 This generates a fresh Rails 8.1 app, installs `layered-ui-rails`, runs its install generator, swaps in the layered-ui layout, and adds a Hello World pages controller. Nothing else.
