@@ -20,7 +20,7 @@ bundle add layered-ui-rails
 bin/rails generate layered:ui:install
 ```
 
-The generator copies `layered_ui.css` into `app/assets/tailwind/`, adds the CSS import to `application.css`, and adds the JS import to `application.js`.
+The generator adds `@import "../builds/tailwind/layered_ui";` to `application.css` (the engine's CSS is served straight from the gem via tailwindcss-rails' engine support), creates a `layered_ui_overrides.css` file for theme customisations, and adds the JS import to `application.js`.
 
 Then render the engine layout from your application layout. Place all `content_for` blocks **above** the render call - the engine layout reads them when it renders, so they must be defined first:
 
@@ -38,6 +38,8 @@ Then render the engine layout from your application layout. Place all `content_f
 ## Layout structure
 
 The engine layout provides a fixed header (63px), optional sidebar navigation (256px wide), optional resizable panel (320px default), and a main content area. Dark mode is built in with a toggle and localStorage persistence.
+
+**Your view's `yield` content is already wrapped in `.l-ui-page`** by the engine layout (which applies the responsive padding and `--with-navigation` margin). Do not add your own `.l-ui-page` wrapper around your view content - it duplicates the container and nests two `.l-ui-page` elements. Start your view with its actual content (headings, sections, components) directly.
 
 ### Content blocks
 
@@ -58,11 +60,13 @@ Populate layout regions with `content_for` (always above the render call):
   <p>Panel content here.</p>
 <% end %>
 
-<%# Inject into <head> (e.g. per-tenant theming) %>
+<%# Inject arbitrary content into <head>: third-party scripts (analytics,
+    chat widgets), a page-specific inline <script>, meta/verification tags,
+    preload hints, or a per-request stylesheet link. For styling, the overrides
+    file is usually a better fit - see note below. %>
 <% content_for :l_ui_head do %>
-  <style nonce="<%= content_security_policy_nonce %>">
-    :root { --accent: oklch(0.58 0.19 255); }
-  </style>
+  <%= javascript_include_tag "https://cdn.example.com/widget.js", defer: true %>
+  <meta name="google-site-verification" content="...">
 <% end %>
 
 <%# Add CSS classes to <body> %>
@@ -77,11 +81,59 @@ Populate layout regions with `content_for` (always above the render call):
 <% content_for :l_ui_logo_dark do %>
   <%= image_tag "my_logo_dark.svg", alt: "", class: "l-ui-header__logo l-ui-header__logo--dark" %>
 <% end %>
+
+<%# Prepend or append items to the header actions group %>
+<% content_for :l_ui_header_actions_start do %>
+  <%= link_to "Docs", docs_path, class: "l-ui-button l-ui-button--ghost l-ui-button--small" %>
+<% end %>
+<% content_for :l_ui_header_actions_end do %>
+  <%= link_to "Help", help_path, class: "l-ui-button l-ui-button--ghost l-ui-button--small" %>
+<% end %>
+
+<%# Or replace the default actions group entirely and compose with helpers %>
+<% content_for :l_ui_header_actions do %>
+  <%= link_to "Docs", docs_path, class: "l-ui-button l-ui-button--ghost l-ui-button--small" %>
+  <%= l_ui_theme_toggle %>
+  <%= l_ui_authentication %>
+  <%= l_ui_navigation_toggle %>
+<% end %>
+
+<%# Inline header links (alongside the logo) %>
+<% content_for :l_ui_header_links do %>
+  <%= link_to "Pricing", pricing_path %>
+  <%= link_to "About", about_path %>
+<% end %>
 ```
+
+> `:l_ui_head` injects whatever you like into `<head>`. As a rule of thumb,
+> reach for it for head content rather than styling, because styles are easier
+> to maintain when they live with the rest of your CSS:
+>
+> - **layered-ui token or component overrides** (e.g. `--accent`, restyling a
+>   `.l-ui-*` class) fit best in `app/assets/tailwind/layered_ui_overrides.css`
+>   - see [Theming](#theming) - so they are part of the Tailwind build and can
+>   use `@apply` and the design tokens.
+> - **Other custom styling** fits in the host app's own application stylesheet,
+>   like any normal Rails app.
+>
+> For *per-request* values that cannot be known at build time (e.g. per-tenant
+> brand tokens), a good option is to serve them as a stylesheet from a Rails
+> controller and link it via `:l_ui_head`:
+>
+> ```erb
+> <% content_for :l_ui_head do %>
+>   <%= stylesheet_link_tag tenant_theme_path(current_tenant) %>
+> <% end %>
+> ```
+>
+> The controller renders CSS that overrides the design tokens (`--accent`,
+> etc.) - Turbo- and CSP-friendly, and it keeps styling out of the markup.
 
 Body class modifiers:
 - `l-ui-body--always-show-navigation` - pins navigation as a sidebar on desktop
 - `l-ui-body--hide-header` - hides the header and collapses its space
+- `l-ui-body--glass-header` - glass header (translucent + blur); content scrolls under it
+- `l-ui-body--flush-top` - zeroes the page's top gutter so a hero sits flush at the top, behind the header (pair with `--glass-header` or `--hide-header`)
 
 ### Controller instance variables
 
@@ -103,7 +155,7 @@ Quick reference:
 
 | Helper | Purpose |
 |---|---|
-| `l_ui_navigation_item(label, path, ...)` | Sidebar nav link (supports `icon:`, `match: :starts_with`, `expandable:`) |
+| `l_ui_navigation_item(label, path, ...)` | Sidebar nav link (supports `icon:`, `match: :starts_with`, `expandable:`). For valid `icon:` names and the missing-asset gotcha, see the "Icons" section in `references/HELPERS.md` |
 | `l_ui_navigation_section(heading = nil, ...)` | Group nav items; supports `collapsible:`, `storage_key:`, `separated:` |
 | `l_ui_breadcrumbs(&block)` | Breadcrumb nav wrapper |
 | `l_ui_breadcrumb_item(label, path = nil)` | Individual breadcrumb |
@@ -116,6 +168,9 @@ Quick reference:
 | `l_ui_normalise_field(record, config)` | Normalise a raw field config hash into canonical form |
 | `l_ui_user_signed_in?` | Check if user is authenticated |
 | `l_ui_current_user` | Current user object |
+| `l_ui_theme_toggle` | Default header theme toggle button |
+| `l_ui_authentication` | Default header login/register buttons (Devise) |
+| `l_ui_navigation_toggle` | Default header sidebar toggle button |
 
 ## CSS classes
 
@@ -125,7 +180,7 @@ Key components:
 
 | Component | Key classes |
 |---|---|
-| Page layout | `.l-ui-page`, `--with-navigation`, `__vertically-centered`, `__width-constrained` |
+| Page layout | `.l-ui-page`, `--with-navigation`, `__vertically-centered`, `__narrow` (narrow ~384px column, md:max-w-sm), `__contained` (wide column capped at `--l-ui-contained-width`) |
 | Buttons | `.l-ui-button`, `--primary`, `--outline`, `--outline-danger`, `--full`, `--icon` |
 | Surfaces | `.l-ui-surface`, `--highlighted`, `--sm`, `--collapsible`, `--collapsible-highlighted` |
 | Forms | `.l-ui-form`, `.l-ui-form__group`, `.l-ui-form__field`, `.l-ui-label`, `.l-ui-select` |
@@ -156,7 +211,7 @@ All controllers use the `l-ui--` namespace and are auto-registered via importmap
 Override CSS custom properties after the engine import. Values are full CSS colors - `oklch()` is recommended for perceptually uniform mixing and consistent contrast, but `#hex`, `rgb()`, and keywords also work. A converter such as https://oklch.com/ can help translate from hex/rgb.
 
 ```css
-@import "./layered_ui";
+@import "../builds/tailwind/layered_ui";
 
 :root {
   --accent: oklch(0.58 0.19 255);
@@ -192,8 +247,8 @@ Layered::Ui.current_user_method = :current_member  # default: :current_user
 
 ## Common issues
 
-- **Tailwind classes not generated** - The host app's Tailwind build only sees classes in the host app's templates. Use `l-ui-` classes (which are in the copied CSS) rather than raw Tailwind utilities when styling engine-provided patterns.
-- **Missing styles** - Ensure `@import "./layered_ui";` is in `app/assets/tailwind/application.css`.
+- **Tailwind classes not generated** - The host app's Tailwind build only sees classes in the host app's templates. Use `l-ui-` classes (which are defined in the engine CSS) rather than raw Tailwind utilities when styling engine-provided patterns.
+- **Missing styles** - Ensure `@import "../builds/tailwind/layered_ui";` is in `app/assets/tailwind/application.css`. The import resolves to a file generated by tailwindcss-rails' engine support; it is created automatically by `tailwindcss:build`/`watch` (and `assets:precompile`), so run a build (e.g. `bin/dev`) if the file is missing.
 - **Missing JS controllers** - Ensure `import "layered_ui"` is in `app/javascript/application.js`.
 
 ## Further reference

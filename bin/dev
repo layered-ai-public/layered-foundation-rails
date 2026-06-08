@@ -13,7 +13,4 @@ export PORT="${PORT:-3000}"
 export RUBY_DEBUG_OPEN="true"
 export RUBY_DEBUG_LAZY="true"
 
-echo "Running layered:ui:install to get the latest layered-ui-rails assets..."
-bin/rails generate layered:ui:install
-
 exec foreman start -f Procfile.dev "$@"

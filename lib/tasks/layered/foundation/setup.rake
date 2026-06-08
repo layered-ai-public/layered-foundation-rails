@@ -54,6 +54,7 @@ namespace :layered do
       next unless path.file?
       next if skip_dirs.any? { |d| rel == d || rel.start_with?("#{d}/") }
       next if rel == "lib/tasks/layered/foundation/setup.rake"
+      next if rel == "AGENTS.template.md"
       next if %w[NOTICE TRADEMARK.md CLA.md LICENSE template.rb].include?(rel)
       targets << path
     end
@@ -78,34 +79,11 @@ namespace :layered do
     end
     puts "Updated #{changed} file(s)."
 
+    agents_template = root.join("AGENTS.template.md")
     agents_md = root.join("AGENTS.md")
-    if agents_md.exist?
-      agents_md.write(<<~MD)
-        # AGENTS.md
-
-        This file is a guide for AI coding agents working in this repository. Replace this scaffold with project-specific guidance as the codebase grows.
-
-        ## Bundled agent skills
-
-        This app ships with project-local Claude Code skills under `.claude/skills/`:
-
-        - **layered-ui-rails** - building views with the layered-ui-rails layout, components, helpers, and Stimulus controllers.
-        - **layered-resource-rails** - defining resource classes, mounting `layered_resources` routes, and scaffolding CRUD with search/sort/pagination.
-
-        Use these skills when building out the app. They encode the conventions of the underlying gems, so prefer invoking them over guessing at APIs or hand-rolling equivalents. New views and CRUD features should generally start by consulting the relevant skill.
-
-        ## Suggested sections to fill in
-
-        - **Project overview** - one paragraph on what this app does and who it's for.
-        - **Commands** - how to run the dev server, tests, linters, and any custom rake tasks.
-        - **Architecture** - the key stack choices, where domain logic lives, and any conventions an agent should follow (naming, file layout, testing style).
-        - **Domain glossary** - terms specific to this product that an agent wouldn't infer from the code alone.
-        - **Do / don't** - guardrails: things to always do (e.g. "run `bin/rubocop -a` before committing") and things to avoid (e.g. "don't add new gems without discussion").
-        - **External systems** - pointers to issue trackers, dashboards, runbooks, or docs that live outside this repo.
-
-        Keep it concise - agents read this on every task, so prefer high-signal notes over exhaustive documentation.
-      MD
-      puts "Reset AGENTS.md to a fresh scaffold."
+    if agents_template.exist?
+      FileUtils.mv(agents_template.to_s, agents_md.to_s)
+      puts "Installed AGENTS.template.md as AGENTS.md."
     end
 
     readme = root.join("README.md")
@@ -142,6 +120,7 @@ namespace :layered do
     puts
     puts "Rename complete. Recommended next steps:"
     puts "  - Review the diff (or fresh tree)"
+    puts "  - Review the new AGENTS.md - check it fits this app and add your own custom rules"
     puts "  - bin/setup"
     puts "  - bin/rails test"
     puts "  - Optionally reset git history with: rake \"layered:foundation:reset_git\""

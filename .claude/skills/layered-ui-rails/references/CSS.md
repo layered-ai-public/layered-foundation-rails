@@ -17,14 +17,35 @@ Two patterns deviate from strict BEM by design - leave them in place rather than
 
 This gives author-written links inside long-form content (Markdown, prose, ad-hoc views) consistent underline/colour treatment without forcing an explicit class on every link. Engine elements opt out automatically because their class names contain `l-ui-`. Side effect: any host-app class containing the substring `l-ui-` will also opt an `<a>` out of bare-link styling.
 
+## Body modifiers
+
+Applied to `<body>` via the `:l_ui_body_class` yield to toggle layout-level behaviour:
+
+```
+.l-ui-body--always-show-navigation  Pin sidebar navigation open on desktop
+.l-ui-body--hide-header             Hide the header and collapse its reserved space
+.l-ui-body--header-contained        Constrain the header's inner row to --l-ui-contained-width (landing pages)
+.l-ui-body--glass-header            Glass header (translucent + backdrop blur); content scrolls under it
+.l-ui-body--flush-top               Zero the page's top gutter so the first section sits flush at the top, behind the header
+```
+
 ## Page layout
 
 ```
 .l-ui-page                       Main content wrapper with responsive padding
 .l-ui-page--with-navigation      Left margin for sidebar on desktop
 .l-ui-page__vertically-centered  Centred layout element (e.g. login pages)
-.l-ui-page__width-constrained    Max-width container element
+.l-ui-page__narrow               Narrow column (md:max-w-sm, ~384px) for any compact, centred content
+.l-ui-page__contained            Centred column capped at --l-ui-contained-width; aligns with the contained header
+.l-ui-page__contained--no-gutter Contained column flush to the page edge until the cap, then centred
+.l-ui-bleed                      Breaks a child out to the page edge (full-bleed hero etc.)
 ```
+
+`.l-ui-page` (and `--with-navigation`) is applied by the engine layout around your view's `yield` - you do not add it yourself. Wrapping your view content in another `.l-ui-page` nests two containers. The `__vertically-centered` and `__narrow` elements are used *inside* views for centred, compact content (the Devise auth pages are one example, but they are general-purpose). `__narrow` caps width at `md:max-w-sm` (~384px). For a wider content area, wrap your content in `.l-ui-page__contained`: it caps width at the `--l-ui-contained-width` token (default `80rem`) and centres with `mx-auto`. Because the contained header (`.l-ui-body--header-contained`) reads the same token, the two line up automatically - override `--l-ui-contained-width` once to move both. Left to itself, `.l-ui-page` holds content to the full available width. By default `.l-ui-page__contained` keeps the page gutter; add `.l-ui-page__contained--no-gutter` to opt out, so the column runs flush to the page edge until it reaches `--l-ui-contained-width`, then centres and caps (useful for tables, media, or full-width cards that should run edge-to-edge on small screens without losing the cap on large ones).
+
+The page gutter (horizontal and bottom padding) is the `--l-ui-gutter` custom property (default `1rem`), owned by the `.l-ui-page` and `.l-ui-header-container` shells - the contained header and `.l-ui-page__contained` then cap their inner content within that gutter the same way, so they always align by construction. Override it on a container to change the gutter in one place rather than reverse-engineering padding values. To take a single child edge-to-edge (a full-bleed hero, a banner), add `.l-ui-bleed` to it - it cancels exactly the current gutter, so no negative-margin guesswork. Note `.l-ui-bleed` only handles the horizontal edges; content still sits below the page's top padding (header offset + gutter). To take the *top* edge too - a hero that starts at the very top of the viewport, behind the header - add `.l-ui-body--flush-top`, which zeroes the page's top padding. On its own over the opaque header that would hide content, so pair it with `.l-ui-body--glass-header` (the header turns translucent and content shows through the blur) or `.l-ui-body--hide-header`. Give the hero its own internal top padding (at least `--header-height`) so its content clears the floating header.
+
+`.l-ui-page` is a flex column (`flex flex-1 flex-col`) and uses `overflow-x-clip` to hold its content to the available width: intrinsically wide content (tables, code blocks, long unbroken strings) is clipped rather than expanding the page or adding a horizontal page scrollbar. So make such content scroll internally (e.g. wrap a table in an `overflow-x-auto` element) instead of expecting the page to grow.
 
 ## Buttons
 
@@ -43,7 +64,8 @@ Always combine the `l-ui-button` base class with a colour modifier (e.g. `l-ui-b
 Icon variants (combine with the `l-ui-button` base):
 
 ```
-.l-ui-button--icon               Icon-only button (fixed size, no text)
+.l-ui-button--icon               Icon-only button (44px square, no text)
+                                 Add --small (l-ui-button--icon l-ui-button--small) for a 32px square icon button
 .l-ui-button--navigation-toggle  Mobile navigation toggle
 ```
 
@@ -249,6 +271,7 @@ Always combine the base block with a modifier, e.g. `<span class="l-ui-badge l-u
 ```
 .l-ui-header-container           Fixed header container
 .l-ui-header                     Header flexbox
+.l-ui-header__links              Inline link list for landing-page headers (yielded via :l_ui_header_links)
 .l-ui-header__icon               Header icon (responsive)
 .l-ui-header__icon--light        Light theme icon
 .l-ui-header__icon--dark         Dark theme icon
@@ -373,6 +396,8 @@ Tier 2 - Full palette (override individually as needed):
 --error-bg              Error background
 --error-text            Error text
 --header-height         Header height (default 63px)
+--l-ui-gutter           Page/header horizontal + bottom padding (default 1rem)
+--l-ui-contained-width  Max width of contained content - header + .l-ui-page__contained (default 80rem)
 ```
 
 Override --button-primary-text when your accent color needs a different text/icon color on buttons (e.g. a pink accent with white button text in dark mode). Override --button-primary-icon instead when only the icon color should change.
