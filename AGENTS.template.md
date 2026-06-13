@@ -132,6 +132,19 @@ Accessibility and the design system are not optional here.
      component, create a **strict BEM** class (`block__element--modifier`) in CSS and
      theme it through the OKLCH custom-property tokens - don't scatter the same
      utility soup across multiple templates. Factor it into a partial / view component.
+     **Compose these classes from Tailwind with `@apply` rather than hand-rolling raw
+     CSS** - reach for the utilities you'd otherwise put in the template (layout,
+     spacing, sizing) and only drop to plain declarations for the themed tokens that
+     `@apply` can't express:
+
+     ```css
+     .card__header {
+       @apply flex items-center gap-3 px-4 py-3;
+       background: var(--surface);
+       color: var(--foreground);
+     }
+     ```
+
      **Name new classes to mirror layered-ui-rails conventions** where a comparable
      pattern exists: follow its BEM structure (e.g. `card__header--active` rather than
      an ad-hoc `myCardHead`), so custom components read as a natural extension of the
