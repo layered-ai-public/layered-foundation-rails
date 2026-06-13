@@ -91,6 +91,18 @@ first; only build something custom when nothing fits.
 
 Accessibility and the design system are not optional here.
 
+- **Agree the colour scheme up front.** Before building anything visual, settle the
+  palette - and the design tokens that support it - *with the user*. If they're not
+  sure, ask them to share an image (a brand asset, a moodboard) or a few URLs of sites
+  whose style they like, and derive the scheme from those. Pin down the accent,
+  surfaces, and foregrounds early so views aren't restyled piecemeal later. If the user
+  would rather not bother, the default neutral scheme that ships with layered-ui is a
+  perfectly good choice - just leave the tokens as they are.
+- **Don't overload the layered-ui overrides.** Override the design tokens for the
+  brand-level decisions (the agreed scheme above), but keep project-specific styling in
+  separate, app-owned CSS files rather than piling it into the token override block.
+  Those files still follow the rules below - `l-ui-*` first, OKLCH tokens, strict BEM -
+  unless the user explicitly overrides them.
 - **WCAG 2.2 AA** is the baseline. Preserve semantic HTML, focus states, labels, and
   contrast. layered-ui components are already compliant - don't undo that.
 - **Theming** - light/dark is driven by the layered-ui `l-ui--theme` toggle and CSS
