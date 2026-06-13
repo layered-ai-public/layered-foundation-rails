@@ -123,6 +123,7 @@ namespace :layered do
     puts "  - Review the new AGENTS.md - check it fits this app and add your own custom rules"
     puts "  - bin/setup"
     puts "  - bin/rails test"
+    puts "  - Optionally install Devise authentication with: rake \"layered:foundation:install_devise[User]\""
     puts "  - Optionally reset git history with: rake \"layered:foundation:reset_git\""
     end
   end

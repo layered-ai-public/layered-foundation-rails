@@ -29,6 +29,16 @@ bin/rails layered:foundation:setup
 - Drops starter-only files (`LICENSE`, `NOTICE`, `TRADEMARK.md`, `CLA.md`, `template.rb`, and the setup task itself).
 - Replaces `README.md` and this `AGENTS.md` file with fresh scaffolds for the user (and their agents) to build on.
 
+## Installing Devise (optional, separate task)
+
+layered-ui-rails auto-detects Devise and provides styled auth views, header login/register buttons, and sidebar user info with no extra configuration. A separate task adds the gem, runs the `devise:install` and model generators, migrates, and optionally requires sign-in app-wide. Only offer it if the user wants authentication, and run it after the rename:
+
+```bash
+NON_INTERACTIVE=1 bin/rails "layered:foundation:install_devise[User]"
+```
+
+The model name argument defaults to `User`; a non-`User` name also configures `Layered::Ui.current_user_method` to match. `NON_INTERACTIVE` auto-confirms every prompt (including app-wide `authenticate_user!`). Run it interactively (`bin/rails layered:foundation:install_devise`) if they want to answer prompt-by-prompt. The task removes itself on success.
+
 ## Resetting git history (optional, separate task)
 
 This repo is a starter, so the existing git history isn't the user's. If they want a clean slate, a separate task removes the `.git` directory and optionally re-initialises a fresh repo with an initial commit. Don't run this as part of the default setup route - only offer it if the user asks, then run:

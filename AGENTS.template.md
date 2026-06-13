@@ -39,6 +39,23 @@ This app is built on the Rails 8.1 using the layered-foundation-rails template (
 
 Don't add new gems without discussion and confirmation.
 
+## Optional: authentication with Devise
+
+layered-ui-rails auto-detects Devise: styled auth views, header login/register buttons,
+and sidebar user info light up with no extra configuration. If the user wants
+authentication and `lib/tasks/layered/foundation/install_devise.rake` still exists,
+run the bundled task rather than installing Devise by hand:
+
+```bash
+NON_INTERACTIVE=1 bin/rails "layered:foundation:install_devise[User]"
+```
+
+The model name defaults to `User`; a non-`User` name also configures
+`Layered::Ui.current_user_method` to match. `NON_INTERACTIVE` auto-confirms every
+prompt (including app-wide `authenticate_user!`); run it interactively to answer
+prompt-by-prompt. The task removes itself on success - if it's gone, Devise is
+already installed or was set up manually.
+
 ## Bundled agent skills - use them
 
 Project-local Claude Code skills live under `.claude/skills/`. They encode the
