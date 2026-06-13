@@ -56,6 +56,20 @@ prompt (including app-wide `authenticate_user!`); run it interactively to answer
 prompt-by-prompt. The task removes itself on success - if it's gone, Devise is
 already installed or was set up manually.
 
+## Layout conventions
+
+Default the body class via `content_for :l_ui_body_class` to match the page type:
+
+- **Admin / back-office** - full-width header (the default) +
+  `l-ui-body--always-show-navigation` to pin the sidebar open on desktop.
+- **Landing / marketing** - `l-ui-body--header-contained` for the header, and wrap
+  content in `l-ui-page__contained` for a max-width body.
+
+These are sensible defaults, not rules - override when a design calls for it.
+
+Mount admin behind an authenticated namespace (`authenticate_user!` on the base
+controller). `/admin` works, but a less guessable namespace is advisable.
+
 ## Bundled agent skills - use them
 
 Project-local Claude Code skills live under `.claude/skills/`. They encode the
