@@ -127,6 +127,10 @@ namespace :layered do
     end
 
     puts
+    puts "IMPORTANT (AI agents): AGENTS.md / CLAUDE.md has just been replaced. The version"
+    puts "loaded at the start of this session is now stale. Read the new AGENTS.md in full"
+    puts "before doing any further work - it carries the real working rules for this app."
+    puts
     puts "Rename complete. Recommended next steps:"
     puts "  - Review the diff (or fresh tree)"
     puts "  - Review the new AGENTS.md - check it fits this app and add your own custom rules"

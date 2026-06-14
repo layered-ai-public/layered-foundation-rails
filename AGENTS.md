@@ -29,6 +29,8 @@ bin/rails layered:foundation:setup
 - Drops starter-only files (`LICENSE`, `NOTICE`, `TRADEMARK.md`, `CLA.md`, `template.rb`, and the setup task itself).
 - Replaces `README.md` and this `AGENTS.md` file with fresh scaffolds for the user (and their agents) to build on.
 
+**After the task finishes, re-read `AGENTS.md`.** The setup task replaces this very file, so the instructions loaded into your context at the start of the session are now stale. Before doing any further work, use your file-reading tool to read the new `AGENTS.md` in full - it carries the real working rules for this app (styling, layout, bundled skills) that this starter version doesn't.
+
 ## Installing Devise (optional, separate task)
 
 layered-ui-rails auto-detects Devise and provides styled auth views, header login/register buttons, and sidebar user info with no extra configuration. A separate task adds the gem, runs the `devise:install` and model generators, migrates, and optionally requires sign-in app-wide. Only offer it if the user wants authentication, and run it after the rename:
