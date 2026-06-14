@@ -3,6 +3,17 @@
 Guide for AI coding agents (and humans) working in this repository. Keep it concise
 and high-signal - it's read on every task.
 
+## Rules of engagement (read first)
+
+- **Never add colours, palettes, or design-token changes without asking.** This
+  includes ad-hoc Tailwind colour utilities (`bg-blue-500`, `text-*`, `border-*`). The
+  default neutral scheme that ships with layered-ui stays untouched unless the user has
+  explicitly asked for branding. See [Styling rules](#styling-rules).
+- **Enabling an optional layered gem? Install its skill and read it before writing any
+  code against it.** The skill won't appear in your skill list until you generate it -
+  so you won't be reminded it exists. See [Bundled agent skills](#bundled-agent-skills---use-them).
+- **Don't add new gems without discussion and confirmation.**
+
 ## Project overview
 
 TODO: one paragraph on what this app does and who it's for.
@@ -36,8 +47,6 @@ This app is built on the Rails 8.1 using the layered-foundation-rails template (
 - **layered-resource-rails** - convention-over-config CRUD (search/sort/pagination) *(enable in Gemfile if needed)*
 - **layered-assistant-rails** - AI assistant side-panel *(enable in Gemfile if needed)*
 - **kamal** - single-server Docker deploy
-
-Don't add new gems without discussion and confirmation.
 
 ## Optional: authentication with Devise
 
@@ -116,15 +125,25 @@ default:
 - **kamal-deploy** - maintained in this repo; first-time deploy, changing the deploy target, debugging `kamal deploy`.
 
 The resource and assistant gems are optional (enable them in the `Gemfile` if needed).
-When you opt into one, install its skill from the gem so the two stay in sync:
+**When you enable one, follow these steps in order - do not skip ahead to writing
+code:**
 
-```bash
-# after enabling layered-resource-rails - resource classes, layered_resources routes, CRUD
-bin/rails generate layered:resource:install_agent_skill
+1. Add the gem to the `Gemfile` and run `bundle install`.
+2. Install its skill from the gem so the two stay in sync:
 
-# after enabling layered-assistant-rails - mounting and embedding the AI assistant panel
-bin/rails generate layered:assistant:install_agent_skill
-```
+   ```bash
+   # layered-resource-rails - resource classes, layered_resources routes, CRUD
+   bin/rails generate layered:resource:install_agent_skill
+
+   # layered-assistant-rails - mounting and embedding the AI assistant panel
+   bin/rails generate layered:assistant:install_agent_skill
+   ```
+
+3. Invoke the newly installed skill and follow it. **Do not hand-roll resource classes,
+   routes, CRUD actions, or assistant wiring from memory** - the skill is version-matched
+   to the installed gem, and guessing the API is exactly how these features go wrong. The
+   skill won't show up in your skill list until step 2 runs, so it's on you to install it
+   before you start.
 
 Re-run a generator after upgrading its gem to refresh the skill.
 
@@ -137,14 +156,16 @@ first; only build something custom when nothing fits.
 
 Accessibility is not optional here. Branding is the user's call - ask, don't impose.
 
-- **Ask about colours and branding; don't force a scheme.** If the user hasn't said how
-  they want the app to look, ask whether they have a palette, logo, or icons in mind.
-  If they're unsure and *want* help, you can offer to derive a scheme from an image (a
-  brand asset, a moodboard) or a few reference URLs they like - but only if they're
-  interested. If they'd rather not bother, the default neutral scheme that ships with
-  layered-ui is a perfectly good choice - just leave the tokens as they are. Once
-  branding is agreed, the **layered-ui-rails skill** covers how to apply colours, logos,
-  and icons - consult it rather than hand-rolling overrides.
+- **Never introduce colours or a scheme unprompted.** If the user hasn't said how they
+  want the app to look, leave the default neutral layered-ui tokens exactly as they are.
+  This applies to *any* colour decision, not just a formal palette - reaching for an
+  ad-hoc Tailwind colour utility (`bg-blue-500`, `text-emerald-600`) on a badge, button,
+  or alert is imposing a scheme just as much as overriding a token, and it breaks the
+  theme toggle and contrast guarantees besides. If you think the design needs colour,
+  ask first; use the existing `l-ui-*` semantic classes where one fits. When the user
+  *does* want branding, you can offer to derive a scheme from an image or reference URLs
+  they like - and once it's agreed, the **layered-ui-rails skill** covers how to apply
+  colours, logos, and icons; consult it rather than hand-rolling overrides.
 - **Don't overload the layered-ui overrides.** Override the design tokens for
   brand-level decisions, but keep project-specific styling in
   separate, app-owned CSS files rather than piling it into the token override block.
@@ -163,11 +184,7 @@ Accessibility is not optional here. Branding is the user's call - ask, don't imp
   .l-ui--theme[data-theme="dark"] { --accent: oklch(0.72 0.14 255); }
   ```
 
-- **CSS layering.** The rule in one line: *use `l-ui-*` classes wherever the design
-  system has a pattern; use Tailwind utilities in views only for local layout,
-  spacing, and responsive composition; never use Tailwind colour, typography, border,
-  shadow, or state utilities for themed UI; for repeated or shared patterns, create a
-  BEM-style component class in CSS and theme it with OKLCH tokens.* In order:
+- **CSS layering**, in order:
 
   1. **Prefer existing `l-ui-*` classes first** - buttons, cards, forms, alerts,
      navigation, panels, typography patterns, and the like are already provided.
@@ -198,12 +215,8 @@ Accessibility is not optional here. Branding is the user's call - ask, don't imp
      design system. App-defined classes don't need a prefix - that keeps them clearly
      distinct from the engine's `l-ui-*` namespace.
   4. **Never bypass the tokens for themed decisions.** Colours, surfaces, borders,
-     focus states, typography tone, and interactive states come from the design
-     system, not from Tailwind colour/state utilities - otherwise the theme toggle and
-     WCAG contrast guarantees silently break.
-
-  Note: Tailwind only compiles classes it sees in the host app's templates, so
-  engine-provided patterns must use the copied `l-ui-*` classes, not raw utilities.
+     focus states, and typography tone come from the design system's tokens, not from
+     Tailwind colour/state utilities.
 
 ## Suggested sections to fill in
 
