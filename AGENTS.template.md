@@ -58,17 +58,48 @@ already installed or was set up manually.
 
 ## Layout conventions
 
-Default the body class via `content_for :l_ui_body_class` to match the page type:
+The body class (set via the `l_ui_add_body_class` helper) decides how a page reads:
 
-- **Admin / back-office** - full-width header (the default) +
-  `l-ui-body--always-show-navigation` to pin the sidebar open on desktop.
-- **Landing / marketing** - `l-ui-body--header-contained` for the header, and wrap
-  content in `l-ui-page__contained` for a max-width body.
+- **Landing / marketing** - `l-ui-body--header-contained` for a centred, contained
+  header, and wrap content in `l-ui-page__contained` for a max-width body. This is
+  what `app/views/layouts/application.html.erb` ships with.
+- **App / back-office** - full-width header (the engine default, so just omit
+  `--header-contained`) plus `l-ui-body--always-show-navigation` to pin the sidebar
+  open on desktop.
 
-These are sensible defaults, not rules - override when a design calls for it.
+**Set these defaults structurally, with a layout per section - don't rely on each page
+remembering to call `l_ui_add_body_class`.** Every controller inherits
+`layouts/application`, so a page that forgets to override inherits the *landing*
+defaults - which is why app/admin sections so often end up with a contained header and
+a hidden sidebar. Keep `application` as the landing default, and give each app-style
+section its own layout that sets the defaults once:
 
-Mount admin behind an authenticated namespace (`authenticate_user!` on the base
-controller). `/admin` works, but a less guessable namespace is advisable.
+```erb
+<%# app/views/layouts/manage.html.erb %>
+<% l_ui_add_body_class "l-ui-body--always-show-navigation" %>
+
+<% content_for :l_ui_navigation_items do %>
+  <%= l_ui_navigation_item "Dashboard", manage_root_path, icon: "home" %>
+<% end %>
+
+<%= render template: "layouts/layered_ui/application" %>
+```
+
+```ruby
+# app/controllers/manage/base_controller.rb
+class Manage::BaseController < ApplicationController
+  layout "manage"
+  before_action :authenticate_user!
+end
+```
+
+Now every controller under that base inherits the right header/sidebar automatically -
+nothing to forget per page, and an individual page can still add its own
+`l_ui_add_body_class` when a design calls for it.
+
+The real gate on a privileged section is `authenticate_user!` on the base controller,
+not the URL. A less guessable namespace than `/admin` is a mild nicety on top of that,
+not a substitute for it - so name the section for what it is and lean on the auth.
 
 ## Bundled agent skills - use them
 
@@ -77,10 +108,25 @@ conventions of the underlying gems, so **prefer invoking the relevant skill over
 guessing at APIs or hand-rolling equivalents.** New views and CRUD features should
 start by consulting the skill.
 
-- **layered-ui-rails** - building views with the layout, components, helpers, and Stimulus controllers.
-- **layered-resource-rails** - resource classes, mounting `layered_resources` routes, scaffolding CRUD.
-- **layered-assistant-rails** - mounting and embedding the AI assistant panel.
-- **kamal-deploy** - first-time deploy, changing the deploy target, debugging `kamal deploy`.
+The layered gems each own their skill and ship a generator that installs the version
+matching the installed gem - so the skill never drifts from the code. Present by
+default:
+
+- **layered-ui-rails** - installed from the gem (matches the installed version); building views with the layout, components, helpers, and Stimulus controllers.
+- **kamal-deploy** - maintained in this repo; first-time deploy, changing the deploy target, debugging `kamal deploy`.
+
+The resource and assistant gems are optional (enable them in the `Gemfile` if needed).
+When you opt into one, install its skill from the gem so the two stay in sync:
+
+```bash
+# after enabling layered-resource-rails - resource classes, layered_resources routes, CRUD
+bin/rails generate layered:resource:install_agent_skill
+
+# after enabling layered-assistant-rails - mounting and embedding the AI assistant panel
+bin/rails generate layered:assistant:install_agent_skill
+```
+
+Re-run a generator after upgrading its gem to refresh the skill.
 
 **Check for an existing helper before rolling your own.** layered-ui-rails ships a
 full set of view helpers (`l_ui_*` prefix - see the skill's `references/HELPERS.md`)
@@ -89,17 +135,18 @@ first; only build something custom when nothing fits.
 
 ## Styling rules
 
-Accessibility and the design system are not optional here.
+Accessibility is not optional here. Branding is the user's call - ask, don't impose.
 
-- **Agree the colour scheme up front.** Before building anything visual, settle the
-  palette - and the design tokens that support it - *with the user*. If they're not
-  sure, ask them to share an image (a brand asset, a moodboard) or a few URLs of sites
-  whose style they like, and derive the scheme from those. Pin down the accent,
-  surfaces, and foregrounds early so views aren't restyled piecemeal later. If the user
-  would rather not bother, the default neutral scheme that ships with layered-ui is a
-  perfectly good choice - just leave the tokens as they are.
-- **Don't overload the layered-ui overrides.** Override the design tokens for the
-  brand-level decisions (the agreed scheme above), but keep project-specific styling in
+- **Ask about colours and branding; don't force a scheme.** If the user hasn't said how
+  they want the app to look, ask whether they have a palette, logo, or icons in mind.
+  If they're unsure and *want* help, you can offer to derive a scheme from an image (a
+  brand asset, a moodboard) or a few reference URLs they like - but only if they're
+  interested. If they'd rather not bother, the default neutral scheme that ships with
+  layered-ui is a perfectly good choice - just leave the tokens as they are. Once
+  branding is agreed, the **layered-ui-rails skill** covers how to apply colours, logos,
+  and icons - consult it rather than hand-rolling overrides.
+- **Don't overload the layered-ui overrides.** Override the design tokens for
+  brand-level decisions, but keep project-specific styling in
   separate, app-owned CSS files rather than piling it into the token override block.
   Those files still follow the rules below - `l-ui-*` first, OKLCH tokens, strict BEM -
   unless the user explicitly overrides them.

@@ -103,6 +103,15 @@ namespace :layered do
       puts "Reset README.md to a fresh scaffold."
     end
 
+    puts
+    puts "Installing the layered-ui-rails agent skill from the gem..."
+    if system("bin/rails", "generate", "layered:ui:install_agent_skill", "--force")
+      puts "Installed .claude/skills/layered-ui-rails/ (version matched to the gem)."
+    else
+      puts "WARNING: could not install the layered-ui-rails agent skill automatically."
+      puts "         Run 'bin/rails generate layered:ui:install_agent_skill' after bin/setup."
+    end
+
     %w[NOTICE TRADEMARK.md CLA.md LICENSE template.rb].each do |filename|
       file = root.join(filename)
       if file.exist?
