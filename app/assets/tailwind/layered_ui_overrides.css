@@ -105,3 +105,47 @@
   @apply h-7.5 w-auto;
 }
 */
+
+/*
+ * Hero background. A default ships with the gem; re-skin it here
+ * (or set it to `none` to remove it). Set --l-ui-hero-image inline
+ * on a single hero to give different heroes different art.
+ */
+
+/*
+:root {
+  --l-ui-hero-image: url('my_hero_light.webp');
+}
+
+.dark {
+  --l-ui-hero-image: url('my_hero_dark.webp');
+}
+*/
+
+/*
+ * Decorative tint palette. The tint slots (l-ui-tint-1..5) are a
+ * shared, control-agnostic palette - used by cards and any other
+ * control that reads the --l-ui-tint-* role variables. They are
+ * independent of the Tier 1 brand --accent above. Slot numbers are
+ * palette positions, not fixed hues, so re-skinning a slot never
+ * makes a class name misleading. Each slot has four tokens (border,
+ * foreground, gradient from/to) for light and dark; override only
+ * the ones you need. (You can also set the role variables inline on
+ * a single element, or point them at var(--accent), for a one-off.)
+ */
+
+/*
+:root {
+  --l-ui-tint-1-border:     oklch(0.6 0.1 195);
+  --l-ui-tint-1-foreground: oklch(0.45 0.1 195);
+  --l-ui-tint-1-from:       oklch(0.95 0.04 195);
+  --l-ui-tint-1-to:         oklch(0.88 0.07 195);
+}
+
+.dark {
+  --l-ui-tint-1-border:     oklch(0.5 0.1 195);
+  --l-ui-tint-1-foreground: oklch(0.78 0.11 195);
+  --l-ui-tint-1-from:       oklch(0.28 0.05 195);
+  --l-ui-tint-1-to:         oklch(0.22 0.06 195);
+}
+*/
