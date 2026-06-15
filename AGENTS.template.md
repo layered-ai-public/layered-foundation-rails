@@ -65,6 +65,27 @@ prompt (including app-wide `authenticate_user!`); run it interactively to answer
 prompt-by-prompt. The task removes itself on success - if it's gone, Devise is
 already installed or was set up manually.
 
+## Testing
+
+The default test runner is Rails' built-in Minitest (`bin/rails test`). Lean on it
+instead of booting a web server to click around - starting `bin/dev` to eyeball that a
+route works is slow and proves less than a focused test.
+
+- **Reach for integration tests to prove endpoints are wired up.** A short
+  `ActionDispatch::IntegrationTest` that hits a path and asserts the response
+  (`get manage_posts_path; assert_response :success`) is the fastest way to confirm
+  routing, the controller, the layout, and auth all line up. This is usually all you
+  need to verify a feature is connected - no browser required.
+- **Test what *this app* adds, not the framework.** Rails 8's Minitest defaults are
+  scoped to the code the host app wires up and any custom logic it introduces. Cover
+  your own routes, controller actions, scopes (e.g. a `manage`-scoped query on `Post`),
+  validations, and business rules.
+- **Don't test the Rails framework or the layered gems' internals.** Rails itself and
+  the layered-* engines have their own test suites - re-testing that `belongs_to`
+  works, that layered-ui renders a component, or that layered-resource paginates is
+  wasted effort. Assert on the behaviour your app is responsible for, and trust the
+  gems for theirs.
+
 ## Layout conventions
 
 The body class (set via the `l_ui_add_body_class` helper) decides how a page reads:
