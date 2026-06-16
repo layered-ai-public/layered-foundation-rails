@@ -131,6 +131,23 @@ The real gate on a privileged section is `authenticate_user!` on the base contro
 not the URL. A less guessable namespace than `/admin` is a mild nicety on top of that,
 not a substitute for it - so name the section for what it is and lean on the auth.
 
+## Page titles and descriptions
+
+**Every page needs a descriptive `<title>` - this is WCAG 2.4.2 (Page Titled), not
+optional.** The layered-ui layout renders `<title>` from `@page_title` and
+`<meta name="description">` from `@page_description`, but only when they're set. To
+guarantee no page ever ships title-less, `ApplicationController` sets a default
+`@page_title` (the application name) in a `before_action`.
+
+- **Override `@page_title` per action** with something specific and unique to the page
+  (e.g. `@page_title = "Edit post"`), so titles distinguish pages for screen-reader and
+  tabbed-browsing users. Set it in the controller action, not the view.
+- **Set `@page_description`** on public/landing pages for the `<meta name="description">`
+  tag. It's good practice (and helps SEO) but isn't required on every page.
+- Set both *before* the view renders - assign them in the controller action (or a
+  `before_action`), since the layout reads them at render time. A new section's base
+  controller is a good place to set a section-wide default title.
+
 ## Bundled agent skills - use them
 
 Project-local Claude Code skills live under `.claude/skills/`. They encode the
