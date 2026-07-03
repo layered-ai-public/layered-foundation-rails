@@ -3,7 +3,7 @@ name: kamal-deploy
 description: Configures and deploys this Rails 8 app to a single-server production target with Kamal - SQLite on a persistent volume, Let's Encrypt SSL via kamal-proxy, and ENV-driven server/domain/SSH-key so the same config works for multiple environments. Use when wiring up first-time Kamal deployment, changing the deploy target, debugging `kamal deploy`, or adjusting secrets/proxy/registry config.
 metadata:
   author: layered.ai
-  version: "1.0"
+  version: "1.1"
 ---
 
 # kamal-deploy
@@ -47,12 +47,14 @@ ssh:
   user: root
   keys:
     - <%= ENV["KAMAL_SSH_KEY"] || "~/.ssh/id_rsa" %>
+  keys_only: true
 ```
 
 Notes:
 
 - Use `ENV.fetch` (not `ENV[]`) for IP and domain so a missing value fails loudly instead of deploying nowhere.
 - `ssh.user: root` is the default - works out of the box on most stock Ubuntu/Debian cloud images. See "SSH user" below if your image disables root SSH.
+- `ssh.keys_only: true` forces Kamal to offer only the configured key. Without it, a workstation `ssh-agent` with several keys loaded can hit the server's `MaxAuthTries` and get disconnected before Kamal offers the right one - even though a direct `ssh -i <key>` works fine (that forces the key). Pure win when a single key is configured, which is the case here.
 - `proxy.ssl: true` enables Let's Encrypt. Rails 8's generated `config/environments/production.rb` already sets `config.assume_ssl` and `config.force_ssl` - leave them on.
 - Keep the default `volumes:` entry (`<service>_storage:/rails/storage`); it's where SQLite and Active Storage files live.
 - Keep `registry.server: localhost:5555` for the single-server setup.
@@ -61,6 +63,47 @@ Notes:
 ## Configure `.kamal/secrets`
 
 The generated `.kamal/secrets` already contains `RAILS_MASTER_KEY=$(cat config/master.key)` - that's all that's needed for env-only secrets. If `config/master.key` is gitignored (it should be), every developer who deploys needs their own copy. The deploy ENV vars (`KAMAL_DEPLOY_IP`, etc.) are *not* secrets in the Kamal sense - they're build-time inputs read by the ERB in `deploy.yml`, so they don't belong in `.kamal/secrets`.
+
+## External Postgres/RDS target (alternative to SQLite)
+
+Use this instead of the SQLite defaults above when the app's database is a pre-provisioned Postgres instance (e.g. RDS) rather than a Kamal-managed volume. This is different from the `db:` accessory mentioned in "When to outgrow this setup" below - an accessory is a Postgres container Kamal itself manages, whereas here Postgres already exists outside Kamal's control and the app just needs to be pointed at it. Key this branch off which adapter `config/database.yml` already declares (`sqlite3` vs `postgresql`) rather than assuming.
+
+### Dockerfile
+
+Swap the SQLite runtime package for the Postgres client library, and add the Postgres dev headers to the build stage (the `pg` gem needs them to compile - the runtime image doesn't):
+
+```dockerfile
+# build stage
+RUN apt-get install --no-install-recommends -y build-essential libpq-dev ...
+
+# final/runtime stage
+RUN apt-get install --no-install-recommends -y libpq5 postgresql-client ...
+```
+
+### `config/database.yml`
+
+If the host app already ships a Postgres/PostGIS `database.yml` with a hardcoded production username/password (common when inheriting from a previously Capistrano-deployed sibling app), rewrite the `production:` block to read from ENV instead - this is what makes the ENV-driven, multi-target story below actually reach the database, not just the server/domain/SSH key:
+
+```yaml
+production:
+  <<: *default
+  database: <%= ENV.fetch("DATABASE_NAME") %>
+  host: <%= ENV.fetch("DATABASE_HOST") %>
+  username: <%= ENV.fetch("DATABASE_USERNAME") %>
+  password: <%= ENV.fetch("DATABASE_PASSWORD") %>
+```
+
+### `config/deploy.yml` and `.kamal/secrets`
+
+- Add `DATABASE_HOST`, `DATABASE_USERNAME`, `DATABASE_NAME` to `env.clear`.
+- Add `DATABASE_PASSWORD` to `env.secret` (alongside any other app secrets, e.g. `DEVISE_SECRET_KEY` or third-party API keys), with a matching passthrough line in `.kamal/secrets`.
+- The `volumes:` entry stops being "the database" and becomes Active Storage-only - SQLite is what needed the persistent volume; Postgres lives outside the container entirely.
+
+### RDS prerequisites
+
+- `bin/docker-entrypoint`'s `db:prepare` call tries to *create* the database if it's missing, and Solid Cache/Queue/Cable each expect a sibling database next to the primary. Either grant the DB user `CREATEDB`, or pre-create all four databases (primary plus cache/queue/cable) before the first deploy.
+- The RDS security group must allow inbound connections from the app server, not just your workstation.
+- If the primary database was restored from a dump (e.g. migrating off Capistrano), check it for pending migrations before the app goes live - a restored snapshot can be behind `db/schema.rb`.
 
 ## Server bootstrap (before `kamal setup`)
 
@@ -83,7 +126,7 @@ Optional hardening worth doing on a server that faces the public internet:
 
 ### SSH user
 
-The skill (and `config/deploy.yml`) assumes root SSH is enabled - true for most stock Ubuntu/Debian cloud images. If your image disables root login (some hardened AMIs / locked-down images), instead:
+The skill (and `config/deploy.yml`) assumes root SSH is enabled - true for most stock DigitalOcean/Hetzner Ubuntu/Debian images. Stock **EC2** Ubuntu AMIs are the common exception: root login is disabled by default, so default to `ubuntu` (or `ec2-user` on Amazon Linux) there instead of treating it as a hardened-image edge case. If your image disables root login, instead:
 
 1. Set `ssh.user:` in `config/deploy.yml` to the login user (e.g. `ubuntu`, `admin`, `ec2-user`).
 2. Add that user to the `docker` group **before** running `kamal setup` - otherwise Kamal hits "permission denied" on the Docker socket. Run the bootstrap as that user with `sudo`, plus `sudo usermod -aG docker <user>`, then close and re-open the SSH session so group membership takes effect.
@@ -105,6 +148,10 @@ bin/kamal deploy
 ```
 
 For repeated use, put the exports in a `.env.deploy` (gitignored) and `source` it before deploying - keeps the IP/domain out of shell history.
+
+### Multiple targets (staging/production/...)
+
+For more than one deploy target, use one gitignored `.env.<target>` file per target (`.env.uat`, `.env.production`, ...), each defining that target's `KAMAL_DEPLOY_IP`/`_DOMAIN`/`_SSH_KEY` (plus `DATABASE_*` values if using the external Postgres/RDS branch above), with a committed `.env.<target>.example` template per target. Add `!/.env.*.example` to `.gitignore` alongside the existing `!/.env.example` so the templates stay tracked while the real files don't.
 
 ### Database initialisation
 
@@ -141,11 +188,12 @@ Other useful commands:
 - **`Error response from daemon: ... localhost:5555`** - the local registry tunnel didn't come up. Usually means the SSH key can't auth as the configured user; test with `ssh -i $KAMAL_SSH_KEY <ssh.user>@$KAMAL_DEPLOY_IP`. If you're using a non-root user, also confirm it's in the `docker` group (see "SSH user").
 - **SQLite data vanished after a deploy** - the named volume in `volumes:` was renamed. Volume names are derived from the `service:` value; renaming the service orphans the old volume. `docker volume ls` on the server shows what's there.
 - **Asset 404s right after deploy** - `asset_path: /rails/public/assets` (already in the generated config) handles the cross-version bridge; don't remove it.
+- **`mkdir: .kamal/lock-<service>: File exists`** - a prior `kamal setup`/`deploy` was interrupted (Ctrl-C, timed-out approval, etc.) and left a stale lock on the server. Run `bin/kamal lock release` and retry.
 
 ## When to outgrow this setup
 
 This recipe is deliberately single-box. Move off it when any of these become true:
 
 - **You need a second web server** - drop `proxy.ssl: true` (terminate SSL at a load balancer instead) and switch the registry to a hosted one (Docker Hub, GHCR, registry.digitalocean.com).
-- **SQLite write contention shows up** - add a `db` accessory (Postgres/MySQL) and set `DB_HOST` in `env.clear`.
+- **SQLite write contention shows up** - add a `db` accessory (Postgres/MySQL) and set `DB_HOST` in `env.clear`, or point at an already-provisioned external instance per "External Postgres/RDS target" above.
 - **Background jobs need their own box** - uncomment the `job:` server block and unset `SOLID_QUEUE_IN_PUMA`.
