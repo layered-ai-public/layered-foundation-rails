@@ -33,13 +33,20 @@ bin/rails layered:foundation:setup
 
 ## Installing Devise (optional, separate task)
 
-layered-ui-rails auto-detects Devise and provides styled auth views, header login/register buttons, and sidebar user info with no extra configuration. A separate task adds the gem, runs the `devise:install` and model generators, migrates, and optionally requires sign-in app-wide. Only offer it if the user wants authentication, and run it after the rename:
+layered-ui-rails auto-detects Devise and provides styled auth views, header login/register buttons, and sidebar user info with no extra configuration. A separate task adds the gem, runs the `devise:install` and model generators, migrates, and offers a security baseline, breached-password checking, and app-wide sign-in. Only offer it if the user wants authentication, and run it after the rename:
 
 ```bash
 NON_INTERACTIVE=1 bin/rails "layered:foundation:install_devise[User]"
 ```
 
 The model name argument defaults to `User`; a non-`User` name also configures `Layered::Ui.current_user_method` to match. `NON_INTERACTIVE` auto-confirms every prompt (including app-wide `authenticate_user!`). Run it interactively (`bin/rails layered:foundation:install_devise`) if they want to answer prompt-by-prompt. The task removes itself on success.
+
+Two of the prompts are security options, both recommended and both auto-accepted under `NON_INTERACTIVE`:
+
+- **The security baseline** - a 12-character minimum password, lockout after 10 failed attempts with auto-unlock after an hour, a 30-minute idle session timeout, and paranoid mode. Written into `config/initializers/devise.rb` and the model rather than left as advice. Declining leaves Devise's own defaults, including a 6-character minimum and no lockout.
+- **Breached-password checking** - adds `devise-pwned_password`, which rejects passwords found in known breaches. A length minimum on its own still accepts `aaaaaaaaaaaa`. It checks the Have I Been Pwned API, so sign-up makes an outbound HTTPS call.
+
+If the user declines the baseline, don't quietly re-apply it. If they accept it, don't lower it later without them explicitly asking.
 
 ## Resetting git history (optional, separate task)
 

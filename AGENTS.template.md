@@ -65,6 +65,31 @@ prompt (including app-wide `authenticate_user!`); run it interactively to answer
 prompt-by-prompt. The task removes itself on success - if it's gone, Devise is
 already installed or was set up manually.
 
+### The security options
+
+The task offers two security options, both recommended and both auto-accepted under
+`NON_INTERACTIVE`. Whether this app took them is visible in
+`config/initializers/devise.rb` and the model.
+
+**The security baseline** - written as config rather than left as advice, so it holds
+whether or not anyone reads this file:
+
+- **12-character minimum password.**
+- **Lockout after 10 failed attempts**, auto-unlocking after an hour (`:lockable`).
+- **30-minute idle session timeout** (`:timeoutable`).
+- **Paranoid mode** - auth responses don't reveal whether an account exists.
+
+Declining leaves Devise's own defaults: a 6-character minimum and no lockout.
+
+**Breached-password checking** (`devise-pwned_password`) - rejects passwords that
+appear in known breaches. This is what makes the length minimum mean something; on its
+own, 12 characters still accepts `aaaaaaaaaaaa`. It queries the Have I Been Pwned API,
+so sign-up and password changes make an outbound HTTPS call.
+
+**Do not weaken whatever this app chose unless the user explicitly asks.** If a
+requirement genuinely conflicts, say so and let them decide rather than quietly
+relaxing it.
+
 ## Testing
 
 The default test runner is Rails' built-in Minitest (`bin/rails test`). Lean on it
