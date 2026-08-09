@@ -69,8 +69,7 @@ end
 gem "tailwindcss-rails", "~> 4.4"
 
 # layered-ui-rails
-gem "layered-ui-rails", "~> 0.19"
-# gem "layered-ui-rails", github: "layered-ai-public/layered-ui-rails"
+gem "layered-ui-rails", github: "layered-ai-public/layered-ui-rails"
 
 # layered-assistant-rails
 # gem "layered-assistant-rails", github: "layered-ai-public/layered-assistant-rails"
