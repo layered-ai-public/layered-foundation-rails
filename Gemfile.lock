@@ -1,3 +1,11 @@
+GIT
+  remote: https://github.com/layered-ai-public/layered-ui-rails.git
+  revision: 768db832b7c604df995e6cacc28b8fab13b55f31
+  specs:
+    layered-ui-rails (0.22.0)
+      rails (~> 8.0)
+      tailwindcss-rails (~> 4.0)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -156,9 +164,6 @@ GEM
       thor (~> 1.3)
       zeitwerk (>= 2.6.18, < 3.0)
     language_server-protocol (3.17.0.6)
-    layered-ui-rails (0.22.0)
-      rails (~> 8.0)
-      tailwindcss-rails (~> 4.0)
     lint_roller (1.1.0)
     logger (1.7.0)
     loofah (2.25.2)
@@ -411,7 +416,7 @@ DEPENDENCIES
   importmap-rails
   jbuilder
   kamal
-  layered-ui-rails (~> 0.19)
+  layered-ui-rails!
   propshaft
   puma (>= 5.0)
   rails (~> 8.1.3)
@@ -481,7 +486,7 @@ CHECKSUMS
   json (2.21.2) sha256=1f1d3b7cf2b3ba1a69beca0bb6db13d5438b80bff3cd54cdaaa620b9b07c1c6a
   kamal (2.12.0) sha256=c51d1ab085e515470f98d0c0f043637122b5ebf76e8b610cb1fbbed0b7f9b8fa
   language_server-protocol (3.17.0.6) sha256=5ef2c0c138f8267e1bc631d3328347d354f96724b0af22f2c79516120443b7f0
-  layered-ui-rails (0.22.0) sha256=1d0bdadfe5f4e6103a446d03dbaaff41aef68b68c1ee1c2f24d4e0085eb2c43f
+  layered-ui-rails (0.22.0)
   lint_roller (1.1.0) sha256=2c0c845b632a7d172cb849cc90c1bce937a28c5c8ccccb50dfd46a485003cc87
   logger (1.7.0) sha256=196edec7cc44b66cfb40f9755ce11b392f21f7967696af15d274dde7edff0203
   loofah (2.25.2) sha256=2007f746959ac65552456e04b433e83deb22759ab38c838b4445c70e43425918
