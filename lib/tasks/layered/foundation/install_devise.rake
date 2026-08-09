@@ -90,7 +90,27 @@ namespace :layered do
 
     # --skip leaves existing files untouched so a partially completed run can be retried.
     run.call("bin/rails", "generate", "devise:install", "--skip")
-    run.call("bin/rails", "generate", "devise", model, "--skip")
+
+    # When the model already exists, the generator emits add_devise_to_<table>
+    # rather than devise_create_<table> - and that re-adds every devise column,
+    # so it dies on `duplicate column name: email` if the table is already there.
+    # Re-running this task is advice we give on a partial run, so it has to be
+    # safe: skip the generator once the model and its columns are both in place.
+    model_installed = root.join("app/models/#{model_underscore}.rb").then do |file|
+      file.exist? && file.read.match?(/^[ \t]*devise[ \t]/)
+    end
+    # Scoped to this model's own table, so a second devise model in the same app
+    # doesn't read as "already installed".
+    table_installed = root.join("db/schema.rb").then do |file|
+      next false unless file.exist?
+      block = file.read[/^[ \t]*create_table "#{Regexp.escape(model_underscore.pluralize)}".*?^[ \t]*end$/m]
+      !block.nil? && block.match?(/^[ \t]*t\.\w+[ \t]+"encrypted_password"/)
+    end
+    if model_installed && table_installed
+      puts "#{model_underscore}.rb and its devise columns already exist - skipping the devise model generator."
+    else
+      run.call("bin/rails", "generate", "devise", model, "--skip")
+    end
 
     puts
     puts "Applying options..."
@@ -127,14 +147,27 @@ namespace :layered do
     # Both generator outputs are matched: devise_create_<table> for a new model,
     # add_devise_to_<table> when the model already exists. The newest wins, which
     # is the one this run just generated.
-    lockable_enabled = false
+    lockable_table = nil
     migration = if baseline
       Dir.glob([ root.join("db/migrate/*_devise_create_*.rb").to_s, root.join("db/migrate/*_add_devise_to_*.rb").to_s ]).max
     end
+    # db/schema.rb's version is the newest applied migration, so it says whether
+    # the migration found above is still pending.
+    schema_file = root.join("db/schema.rb")
+    schema = schema_file.exist? ? schema_file.read : ""
+    schema_version = schema[/define\([^)]*version:[ \t]*([\d_]+)/, 1].to_s.delete("_").to_i
     if !baseline
       puts "  - Skipped the Lockable columns (baseline declined)."
     elsif migration.nil?
       puts "  ! No devise migration found - skipping Lockable columns."
+    elsif File.basename(migration)[/\A\d+/].to_i <= schema_version
+      # The generators run with --skip, and Rails skips a migration whose name
+      # already exists - so a re-run, or an app where Devise was set up by hand,
+      # lands on a migration that has already been applied. Uncommenting columns
+      # in it would change nothing in the database while making the file disagree
+      # with db/schema.rb, so leave it alone and say so.
+      puts "  ! #{File.basename(migration)} has already been migrated, so its Lockable"
+      puts "    columns can't be enabled in place - that now takes a new migration."
     else
       path = Pathname.new(migration)
       content = path.read
@@ -147,11 +180,9 @@ namespace :layered do
       # `t.Datetime`), which are not real column types and raise NoMethodError once
       # uncommented.
       content = content.gsub(/^([ \t]*)t\.([A-Z]\w*)\b/) { "#{$1}t.#{$2.downcase}" }
-      # Only claim :lockable is usable if the columns it needs are actually
-      # uncommented in this (still unmigrated) file.
-      lockable_enabled = %w[failed_attempts locked_at].all? do |column|
-        content.match?(/^[ \t]*t\.\w+[ \t]+:#{column}\b/)
-      end
+      # Remembered so the columns can be confirmed against db/schema.rb once
+      # db:migrate has run - the file saying the right thing isn't proof.
+      lockable_table = content[/(?:create_table|change_table)[ (]+:(\w+)/, 1]
       if content == original
         puts "  - #{path.basename}: Lockable columns already enabled (or not present)."
       else
@@ -160,12 +191,22 @@ namespace :layered do
       end
     end
 
-    if baseline && lockable_enabled
-      modules.unshift("lockable")
-    elsif baseline
-      puts "  ! Couldn't enable the Lockable columns, so :lockable is being left off the"
-      puts "    model - it would raise on sign-in without failed_attempts/locked_at."
-      warnings << "Account lockout is off: add failed_attempts/unlock_token/locked_at in a new migration, then add :lockable to the model."
+    run.call("bin/rails", "db:migrate")
+
+    # --- :lockable, only once the columns are really there ----------------------
+    # Checked against the freshly dumped db/schema.rb rather than the migration
+    # file: :lockable raises on sign-in without failed_attempts/locked_at, and an
+    # edited-but-already-applied migration would otherwise look like success.
+    if baseline
+      dumped = schema_file.exist? ? schema_file.read : ""
+      table_block = lockable_table && dumped[/^[ \t]*create_table "#{Regexp.escape(lockable_table)}".*?^[ \t]*end$/m]
+      if table_block && %w[failed_attempts locked_at].all? { |column| table_block.match?(/^[ \t]*t\.\w+[ \t]+"#{column}"/) }
+        modules.unshift("lockable")
+      else
+        puts "  ! failed_attempts/locked_at aren't in db/schema.rb, so :lockable is being"
+        puts "    left off the model - it would raise on sign-in without them."
+        warnings << "Account lockout is off: add failed_attempts/unlock_token/locked_at in a new migration, then add :lockable to the model."
+      end
     end
 
     # --- Model: add the modules the chosen options need -------------------------
@@ -194,8 +235,6 @@ namespace :layered do
         end
       end
     end
-
-    run.call("bin/rails", "db:migrate")
 
     # --- Initializer: the baseline itself --------------------------------------
     # Written as config, not as advice in a README, so every generated app gets
@@ -259,6 +298,7 @@ namespace :layered do
       if updated == content
         puts "Couldn't find the ApplicationController class line - add this yourself:"
         puts "  #{auth_line}"
+        warnings << "App-wide authentication is off: add `#{auth_line}` to ApplicationController."
       else
         app_controller.write(updated)
         puts "Added app-wide authentication to ApplicationController."
