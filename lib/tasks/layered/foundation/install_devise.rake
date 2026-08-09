@@ -95,10 +95,15 @@ namespace :layered do
     puts
     puts "Applying options..."
 
+    # Anything asked for but not actually applied. Collected so the closing
+    # summary tells the truth and the task leaves itself in place to be re-run.
+    warnings = []
+
     # Devise modules the extras need. Collected from both prompts and written to
     # the model in one pass below, since the two options can be chosen separately.
+    # :lockable is added further down, and only if its columns really got enabled.
     modules = []
-    modules.concat(%w[lockable timeoutable]) if baseline
+    modules << "timeoutable" if baseline
 
     # --- Optional: breached-password checking ----------------------------------
     if denylist
@@ -109,6 +114,7 @@ namespace :layered do
         modules << "pwned_password"
       else
         puts "  ! `bundle add devise-pwned_password` failed - continuing without it."
+        warnings << "Breached-password checking is not installed (`bundle add devise-pwned_password` failed)."
       end
     end
 
@@ -117,11 +123,18 @@ namespace :layered do
     # uncommented before db:migrate, so this runs ahead of the migrate step.
     # All three columns (not just the two :time unlocking needs) are enabled so
     # switching unlock_strategy to :email later needs no extra migration.
-    migration = baseline ? Dir.glob(root.join("db/migrate/*_devise_create_*.rb").to_s).max : nil
+    #
+    # Both generator outputs are matched: devise_create_<table> for a new model,
+    # add_devise_to_<table> when the model already exists. The newest wins, which
+    # is the one this run just generated.
+    lockable_enabled = false
+    migration = if baseline
+      Dir.glob([ root.join("db/migrate/*_devise_create_*.rb").to_s, root.join("db/migrate/*_add_devise_to_*.rb").to_s ]).max
+    end
     if !baseline
       puts "  - Skipped the Lockable columns (baseline declined)."
     elsif migration.nil?
-      puts "  ! No devise_create migration found - skipping Lockable columns."
+      puts "  ! No devise migration found - skipping Lockable columns."
     else
       path = Pathname.new(migration)
       content = path.read
@@ -130,15 +143,29 @@ namespace :layered do
         content = content.sub(/^([ \t]*)#[ \t]*(t\.\w+[ \t]+:#{column}\b.*)$/i) { "#{$1}#{$2}" }
       end
       content = content.sub(/^([ \t]*)#[ \t]*(add_index[ \t]+.*:unlock_token\b.*)$/) { "#{$1}#{$2}" }
-      # Some Devise versions ship this line as `t.Integer`, which is not a real
-      # column type and raises NoMethodError once uncommented.
-      content = content.gsub(/^([ \t]*)t\.Integer\b/) { "#{$1}t.integer" }
+      # Some Devise versions ship these lines capitalised (`t.Integer`, `t.String`,
+      # `t.Datetime`), which are not real column types and raise NoMethodError once
+      # uncommented.
+      content = content.gsub(/^([ \t]*)t\.([A-Z]\w*)\b/) { "#{$1}t.#{$2.downcase}" }
+      # Only claim :lockable is usable if the columns it needs are actually
+      # uncommented in this (still unmigrated) file.
+      lockable_enabled = %w[failed_attempts locked_at].all? do |column|
+        content.match?(/^[ \t]*t\.\w+[ \t]+:#{column}\b/)
+      end
       if content == original
         puts "  - #{path.basename}: Lockable columns already enabled (or not present)."
       else
         path.write(content)
         puts "  - #{path.basename}: enabled the Lockable columns."
       end
+    end
+
+    if baseline && lockable_enabled
+      modules.unshift("lockable")
+    elsif baseline
+      puts "  ! Couldn't enable the Lockable columns, so :lockable is being left off the"
+      puts "    model - it would raise on sign-in without failed_attempts/locked_at."
+      warnings << "Account lockout is off: add failed_attempts/unlock_token/locked_at in a new migration, then add :lockable to the model."
     end
 
     # --- Model: add the modules the chosen options need -------------------------
@@ -148,6 +175,7 @@ namespace :layered do
       puts "  - No model changes needed."
     elsif !model_file.exist?
       puts "  ! #{model_file.relative_path_from(root)} not found - add `#{wanted}` to the devise call yourself."
+      warnings << "#{model_file.relative_path_from(root)} is missing `#{wanted}` on its devise call."
     else
       content = model_file.read
       # The generated `devise` call wraps across lines; consume continuation
@@ -155,6 +183,7 @@ namespace :layered do
       statement = content[/^[ \t]*devise[ \t]+(?:[^\n]*,[ \t]*\n)*[^\n]*$/]
       if statement.nil?
         puts "  ! Couldn't find the devise call in #{model_file.relative_path_from(root)} - add `#{wanted}` yourself."
+        warnings << "#{model_file.relative_path_from(root)} is missing `#{wanted}` on its devise call."
       else
         added = modules.reject { |mod| statement.match?(/:#{mod}\b/) }
         if added.empty?
@@ -176,6 +205,7 @@ namespace :layered do
       puts "  - Left config/initializers/devise.rb at Devise's defaults (baseline declined)."
     elsif !initializer.exist?
       puts "  ! config/initializers/devise.rb not found - skipping the baseline settings."
+      warnings << "config/initializers/devise.rb is missing, so none of the baseline settings were written."
     else
       content = initializer.read
       missing = []
@@ -203,6 +233,7 @@ namespace :layered do
       unless missing.empty?
         puts "  ! Couldn't find these settings in the initializer - add them by hand:"
         missing.each { |line| puts "      #{line}" }
+        warnings << "config/initializers/devise.rb is missing: #{missing.join(', ')}."
       end
     end
 
@@ -236,10 +267,14 @@ namespace :layered do
       puts "Skipped app-wide authentication. Add `#{auth_line}` to controllers that need it."
     end
 
+    # Kept in place when something asked for didn't land, so the run is re-runnable
+    # once the cause is fixed rather than silently gone.
     task_file = root.join("lib/tasks/layered/foundation/install_devise.rake")
-    if task_file.exist?
+    if task_file.exist? && warnings.empty?
       File.unlink(task_file)
       puts "Removed lib/tasks/layered/foundation/install_devise.rake (no longer needed)."
+    elsif task_file.exist?
+      puts "Left lib/tasks/layered/foundation/install_devise.rake in place - see the warnings below."
     end
 
     puts
@@ -248,9 +283,18 @@ namespace :layered do
     puts "  - Start the app (bin/dev) and visit the sign-up page (see: bin/rails routes -g #{model_underscore})"
     puts "  - Adjust config/initializers/devise.rb (mailer sender, modules) to taste"
     puts
-    if baseline
+    unless warnings.empty?
+      puts "Not everything asked for was applied:"
+      warnings.each { |warning| puts "  ! #{warning}" }
+      puts "Fix the above (by hand, or by re-running this task) before relying on it."
+      puts
+    end
+    if baseline && warnings.empty?
       puts "The security baseline is config, not advice - it stays in force until someone"
       puts "edits it."
+    elsif baseline
+      puts "The rest of the security baseline is config, not advice - it stays in force"
+      puts "until someone edits it."
     else
       puts "The security baseline was declined, so Devise's own defaults apply - notably a"
       puts "6-character minimum password and no account lockout. To apply it later, set the"
