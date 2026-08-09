@@ -165,9 +165,13 @@ namespace :layered do
       # already exists - so a re-run, or an app where Devise was set up by hand,
       # lands on a migration that has already been applied. Uncommenting columns
       # in it would change nothing in the database while making the file disagree
-      # with db/schema.rb, so leave it alone and say so.
-      puts "  ! #{File.basename(migration)} has already been migrated, so its Lockable"
-      puts "    columns can't be enabled in place - that now takes a new migration."
+      # with db/schema.rb, so leave it alone. The table name is still read out of
+      # it, because on a re-run the columns are usually already in the database -
+      # and without it the db/schema.rb check below has nothing to look up and
+      # would report a missing lockout that isn't missing.
+      lockable_table = File.read(migration)[/(?:create_table|change_table)[ (]+:(\w+)/, 1]
+      puts "  - #{File.basename(migration)} has already been migrated - leaving it alone and"
+      puts "    checking db/schema.rb for the Lockable columns instead."
     else
       path = Pathname.new(migration)
       content = path.read
