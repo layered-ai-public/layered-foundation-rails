@@ -106,7 +106,7 @@ This repo ships a [`kamal-deploy`](.claude/skills/kamal-deploy/SKILL.md) agent s
 - **ENV-driven target** so the committed config is reusable across environments:
 
   ```bash
-  export KAMAL_DEPLOY_IP=178.128.44.128
+  export KAMAL_DEPLOY_IP=127.0.0.1
   export KAMAL_DEPLOY_DOMAIN=app.example.com
   export KAMAL_SSH_KEY=~/.ssh/your_server_key
 

@@ -136,7 +136,7 @@ The skill (and `config/deploy.yml`) assumes root SSH is enabled - true for most 
 Set the three ENV vars and run `kamal deploy`. First deploy also needs `kamal setup` to install Docker and kamal-proxy on the server:
 
 ```bash
-export KAMAL_DEPLOY_IP=178.128.44.128
+export KAMAL_DEPLOY_IP=127.0.0.1
 export KAMAL_DEPLOY_DOMAIN=app.example.com
 export KAMAL_SSH_KEY=~/.ssh/your_server_key
 
