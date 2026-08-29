@@ -55,7 +55,7 @@ Notes:
 - Use `ENV.fetch` (not `ENV[]`) for IP and domain so a missing value fails loudly instead of deploying nowhere.
 - `ssh.user: root` is the default - works out of the box on most stock Ubuntu/Debian cloud images. See "SSH user" below if your image disables root SSH.
 - `ssh.keys_only: true` forces Kamal to offer only the configured key. Without it, a workstation `ssh-agent` with several keys loaded can hit the server's `MaxAuthTries` and get disconnected before Kamal offers the right one - even though a direct `ssh -i <key>` works fine (that forces the key). Pure win when a single key is configured, which is the case here.
-- `proxy.ssl: true` enables Let's Encrypt. Rails 8's generated `config/environments/production.rb` already sets `config.assume_ssl` and `config.force_ssl` - leave them on.
+- `proxy.ssl: true` enables Let's Encrypt at the proxy, but that only terminates TLS - it does not make Rails itself HTTPS-aware. **Check `config/environments/production.rb` and uncomment both `config.assume_ssl = true` and `config.force_ssl = true`**; they ship commented out. `assume_ssl` tells Rails the proxy already terminated TLS (without it, `force_ssl` sees plain HTTP and redirect-loops); `force_ssl` is what actually sets HSTS and marks session cookies `secure`.
 - Keep the default `volumes:` entry (`<service>_storage:/rails/storage`); it's where SQLite and Active Storage files live.
 - Keep `registry.server: localhost:5555` for the single-server setup.
 - Keep `builder.arch: amd64` unless deploying to ARM.
