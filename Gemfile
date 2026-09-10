@@ -72,6 +72,10 @@ gem "tailwindcss-rails", "~> 4.4"
 gem "layered-ui-rails", "~> 0.25"
 # gem "layered-ui-rails", github: "layered-ai-public/layered-ui-rails"
 
+# Optional layered gems - uncomment a line below to enable one, then `bundle install`.
+# Don't use `bundle add`: it appends a fresh duplicate line rather than uncommenting
+# the one that's already here.
+
 # layered-assistant-rails
 # gem "layered-assistant-rails", "~> 0.6"
 # gem "layered-assistant-rails", github: "layered-ai-public/layered-assistant-rails"

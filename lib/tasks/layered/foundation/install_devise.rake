@@ -66,6 +66,28 @@ namespace :layered do
     run.call("bin/rails", "generate", "devise", model, "--skip")
     run.call("bin/rails", "db:migrate")
 
+    # The model generator leaves stub fixtures (`one: {}` / `two: {}`). They insert
+    # blank emails, which violate Devise's unique index, so the first test the app
+    # ever writes dies at fixture load with ActiveRecord::RecordNotUnique. Empty any
+    # fixture file that is nothing but those stubs - it contributes no test data.
+    fixtures_dir = root.join("test/fixtures")
+    if fixtures_dir.directory?
+      Dir[fixtures_dir.join("*.yml").to_s].sort.each do |path|
+        meaningful = File.read(path).lines.reject { |l| l.strip.empty? || l.strip.start_with?("#") }
+        next if meaningful.empty?
+        next unless meaningful.all? { |l| l.match?(/\A\w+:\s*\{\}\s*\z/) }
+
+        File.write(path, <<~YAML)
+          # Intentionally empty.
+          #
+          # The generated `one: {}` / `two: {}` stubs insert blank column values. For a
+          # Devise model that violates the unique index on email, and fixture loading
+          # then fails for every test in the suite. Build records per-test instead.
+        YAML
+        puts "Emptied test/fixtures/#{File.basename(path)} (stub fixtures break fixture loading)."
+      end
+    end
+
     if model != "User"
       initializer = root.join("config/initializers/layered_ui.rb")
       config_line = "Layered::Ui.current_user_method = :current_#{model_underscore}"
