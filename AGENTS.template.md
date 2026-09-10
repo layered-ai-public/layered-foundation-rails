@@ -131,6 +131,13 @@ The real gate on a privileged section is `authenticate_user!` on the base contro
 not the URL. A less guessable namespace than `/admin` is a mild nicety on top of that,
 not a substitute for it - so name the section for what it is and lean on the auth.
 
+## Navigation
+
+Don't forget the navigation when you add pages. By default a new screen should be
+reachable from the section's `content_for :l_ui_navigation_items` block (see
+[Layout conventions](#layout-conventions)), and the section's nav should read as a
+coherent whole rather than a list each feature appended itself to.
+
 ## Page titles and descriptions
 
 **Every page needs a descriptive `<title>` - this is WCAG 2.4.2 (Page Titled), not
