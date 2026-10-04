@@ -46,6 +46,14 @@ bin/rails layered:foundation:setup            # or just ask your AI coding agent
 
 The `setup` task renames the app from `LayeredFoundationRails` to your chosen name across the codebase, replaces `README.md` and `AGENTS.md` with fresh scaffolds, generates `config/credentials.yml.enc` and `config/master.key` if the app has no credentials yet (an existing `config/credentials.yml.enc` is kept - if its `config/master.key` is missing, the task tells you where to get it), and removes the licensing and template files you no longer need. The repo ships an `AGENTS.md`, so opening the project in any AI coding agent and asking it to get started will run this for you - just give it a name.
 
+**Or set up from GitHub** - if you created your repo from this one on GitHub, you can run setup there without cloning: go to Actions → Set up app → Run workflow and enter the CamelCase name. `.github/workflows/setup.yml` runs the setup task on a `layered-setup` branch and opens a pull request with the result. If that branch is already there from a failed run, it's replaced; if it has an open PR, the workflow stops and names the PR. Before you run it:
+
+- Turn on "Allow GitHub Actions to create and approve pull requests" under Settings → Actions → General, or the PR step will fail.
+- If the repo has no `config/credentials.yml.enc`, the workflow won't commit the one it generates, because its `config/master.key` would be lost with the runner. After merging, run `EDITOR=true bin/rails credentials:edit` locally, commit `config/credentials.yml.enc`, and keep `config/master.key` safe.
+- PRs opened by the workflow's `GITHUB_TOKEN` don't trigger CI. Close and reopen the PR to run it. (Layered avoids this by unticking the `open_pull_request` input, which pushes the branch without opening a PR, and opening the PR itself with its GitHub App token.)
+
+Once setup has run, the workflow just fails with an explanation. You can delete it.
+
 ### Adding authentication (optional)
 
 A separate task adds [Devise](https://github.com/heartcombo/devise) and wires it into the layered-ui layout - styled sign-in and registration views, header login/register buttons, and sidebar user info, with no extra configuration:

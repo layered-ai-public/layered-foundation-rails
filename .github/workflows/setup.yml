@@ -1,0 +1,114 @@
+name: Set up app
+
+# Runs the one-time setup task (rename + starter cleanup) and opens a PR with
+# the result. Once that PR is merged the task is gone and this workflow just
+# fails with an explanation - it's safe to leave in place or delete.
+#
+# GITHUB_TOKEN can't create or modify anything under .github/workflows, so the
+# setup task never touches that directory and this job refuses to push if it did.
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: New application name (CamelCase, e.g. MyApp)
+        required: true
+        type: string
+      open_pull_request:
+        description: Open a PR from the branch (Layered turns this off and opens the PR itself, so CI runs on it)
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: setup
+  cancel-in-progress: false
+
+env:
+  BRANCH: layered-setup
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      # An existing branch with no open PR is left over from a failed run, so the
+      # push below force-overwrites it. One with an open PR is in use - stop.
+      - name: Check setup hasn't already run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ ! -f lib/tasks/layered/foundation/setup.rake ]; then
+            echo "::error::lib/tasks/layered/foundation/setup.rake is missing, so setup has already run on this branch. Nothing to do - you can delete .github/workflows/setup.yml."
+            exit 1
+          fi
+          pr=$(gh pr list --head "$BRANCH" --state open --json url --jq '.[0].url')
+          if [ -n "$pr" ]; then
+            echo "::error::Branch $BRANCH already has an open PR: $pr. Merge or close it, then rerun."
+            exit 1
+          fi
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Run setup
+        env:
+          NAME: ${{ inputs.name }}
+        run: |
+          git switch -c "$BRANCH"
+          # Remember whether the repo already had credentials before the task runs.
+          if git ls-files --error-unmatch config/credentials.yml.enc > /dev/null 2>&1; then
+            echo "HAD_CREDENTIALS=1" >> "$GITHUB_ENV"
+          fi
+          NON_INTERACTIVE=1 bin/rails "layered:foundation:setup[$NAME]"
+
+      # The task generates credentials when there are none, but config/master.key
+      # is gitignored and dies with this runner. Committing credentials nobody can
+      # decrypt would break production, so drop them and have the user generate
+      # them locally instead.
+      - name: Discard credentials generated on the runner
+        if: env.HAD_CREDENTIALS != '1'
+        run: rm -f config/credentials.yml.enc config/master.key
+
+      - name: Check .github/workflows is untouched
+        run: |
+          if [ -n "$(git status --porcelain -- .github/workflows)" ]; then
+            git status --porcelain -- .github/workflows
+            echo "::error::Setup changed files under .github/workflows, which GITHUB_TOKEN can't push. Run the setup task locally instead."
+            exit 1
+          fi
+
+      - name: Commit and push
+        env:
+          NAME: ${{ inputs.name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898341+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Set up app as $NAME"
+          git push --force -u origin "$BRANCH"
+
+      - name: Open a PR
+        if: inputs.open_pull_request
+        env:
+          NAME: ${{ inputs.name }}
+          BASE: ${{ github.ref_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          body="Renames the app to \`$NAME\` and removes the starter-only files, via \`layered:foundation:setup\` (run by the Set up app workflow)."
+          if [ "$HAD_CREDENTIALS" != "1" ]; then
+            body="$body
+
+          **Credentials:** this repo had no \`config/credentials.yml.enc\`, and one generated here would be unusable (its \`config/master.key\` can't leave the runner). After merging, run \`EDITOR=true bin/rails credentials:edit\` locally, commit \`config/credentials.yml.enc\`, and keep \`config/master.key\` safe - production won't boot without it."
+          fi
+          body="$body
+
+          PRs opened with GITHUB_TOKEN don't trigger other workflows, so CI won't run on this PR automatically. Close and reopen it, or push a commit, to run CI."
+          gh pr create --base "$BASE" --head "$BRANCH" --title "Set up app as $NAME" --body "$body"

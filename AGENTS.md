@@ -23,6 +23,17 @@ bin/rails layered:foundation:setup
 
 …and answer the prompts.
 
+## Alternative: the GitHub Actions workflow
+
+If the user would rather do it on GitHub (e.g. no local Ruby yet), `.github/workflows/setup.yml` runs the same task: Actions → Set up app → Run workflow, entering the CamelCase name. It runs the task on a `layered-setup` branch, pushes it, and opens a PR. If the branch already exists with an open PR, the workflow fails and names the PR. A branch without one is left over from a failed run, so the workflow replaces it. Points to pass on:
+
+- The repo needs "Allow GitHub Actions to create and approve pull requests" enabled (Settings → Actions → General), or the PR step fails after pushing the branch.
+- If the repo had no `config/credentials.yml.enc`, the workflow doesn't commit the one it generates, because its `config/master.key` can't leave the runner. After merging, they run `EDITOR=true bin/rails credentials:edit` locally and commit `config/credentials.yml.enc`.
+- PRs opened by `GITHUB_TOKEN` don't trigger CI. Close and reopen the PR to run it. The `open_pull_request` input (default true) can be set to false to push the branch without opening a PR. Layered does this and opens the PR with its GitHub App token, so CI does run.
+- After they merge, pull the branch locally and re-read `AGENTS.md`, just as after running the task yourself.
+
+The setup task never edits `.github/workflows`, because `GITHUB_TOKEN` can't push changes there. Keep it that way when changing the task.
+
 ## What the task does
 
 - Rewrites `LayeredFoundationRails`, `layered_foundation_rails`, and `layered-foundation-rails` to the new name across the codebase.

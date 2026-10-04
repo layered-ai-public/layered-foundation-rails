@@ -46,7 +46,9 @@ namespace :layered do
     abort "Aborted." unless prompt_yes.call("Proceed? (y/yes or n/no): ")
 
     root = Pathname.new(Dir.pwd)
-    skip_dirs = %w[.git node_modules tmp log storage vendor/bundle .bundle public/assets]
+    # .github/workflows is skipped so the Set up app workflow can push the result:
+    # GITHUB_TOKEN can't create or modify anything in that directory.
+    skip_dirs = %w[.git .github/workflows node_modules tmp log storage vendor/bundle .bundle public/assets]
 
     targets = []
     Dir.glob("**/*", File::FNM_DOTMATCH, base: root.to_s).each do |rel|
