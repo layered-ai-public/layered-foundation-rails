@@ -1,0 +1,75 @@
+name: Deploy with Kamal
+
+on:
+  workflow_dispatch:
+    inputs:
+      destination:
+        description: Kamal destination (blank for the default config)
+        required: false
+
+concurrency:
+  group: deploy-${{ inputs.destination || 'default' }}
+  cancel-in-progress: false
+
+# config/deploy.yml reads these. Set them as repository variables
+# (Settings → Secrets and variables → Actions → Variables).
+env:
+  KAMAL_DEPLOY_IP: ${{ vars.KAMAL_DEPLOY_IP }}
+  KAMAL_DEPLOY_DOMAIN: ${{ vars.KAMAL_DEPLOY_DOMAIN }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # An unset repo variable or secret arrives as an empty string, which gets
+      # past ENV.fetch in config/deploy.yml and fails later with a confusing
+      # error. Check up front instead.
+      - name: Check deploy configuration
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+        run: |
+          missing=0
+          for name in KAMAL_DEPLOY_IP KAMAL_DEPLOY_DOMAIN; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Repository variable $name is not set (Settings → Secrets and variables → Actions → Variables)."
+              missing=1
+            fi
+          done
+          for name in SSH_PRIVATE_KEY RAILS_MASTER_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Repository secret $name is not set (Settings → Secrets and variables → Actions → Secrets)."
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - uses: actions/checkout@v6
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      # config/deploy.yml takes the key's path from KAMAL_SSH_KEY.
+      - name: Write the deploy key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "KAMAL_SSH_KEY=$HOME/.ssh/deploy_key" >> "$GITHUB_ENV"
+
+      # .kamal/secrets reads the key from this file.
+      - name: Write the master key
+        env:
+          RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+        run: echo "$RAILS_MASTER_KEY" > config/master.key
+
+      # setup installs Docker on a fresh server, then deploys. It's safe to
+      # rerun; switch to `deploy` once the server is set up if you like.
+      - name: Deploy
+        env:
+          DESTINATION: ${{ inputs.destination }}
+        run: bin/kamal setup ${DESTINATION:+-d "$DESTINATION"}

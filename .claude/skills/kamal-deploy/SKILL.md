@@ -3,7 +3,7 @@ name: kamal-deploy
 description: Configures and deploys this Rails 8 app to a single-server production target with Kamal - SQLite on a persistent volume, Let's Encrypt SSL via kamal-proxy, and ENV-driven server/domain/SSH-key so the same config works for multiple environments. Use when wiring up first-time Kamal deployment, changing the deploy target, debugging `kamal deploy`, or adjusting secrets/proxy/registry config.
 metadata:
   author: layered.ai
-  version: "1.1"
+  version: "1.2"
 ---
 
 # kamal-deploy
@@ -25,7 +25,7 @@ Before deploying, confirm:
 1. **Docker is running locally** - Kamal builds the image on your workstation.
 2. **The server is reachable** - `ssh -i $KAMAL_SSH_KEY root@$KAMAL_DEPLOY_IP` succeeds. If the image disables root SSH, switch the configured user (see "SSH user" below).
 3. **DNS points the domain at the server** - `dig +short $KAMAL_DEPLOY_DOMAIN` returns `$KAMAL_DEPLOY_IP`. Let's Encrypt issuance fails otherwise.
-4. **`config/master.key` exists** - `.kamal/secrets` reads it for `RAILS_MASTER_KEY`. If missing, generate credentials with `bin/rails credentials:edit` before deploying.
+4. **`config/master.key` exists** - `.kamal/secrets` reads it for `RAILS_MASTER_KEY`. `bin/rails layered:foundation:setup` generates it along with `config/credentials.yml.enc` when the app has no credentials yet. If it's missing, the app's credentials can't be decrypted - get the key from whoever has it (for apps created in Layered, it's on the app's GitHub integration page) and save it as `config/master.key`, or as a last resort delete `config/credentials.yml.enc` and run `EDITOR=true bin/rails credentials:edit` to start over (this discards any stored credentials).
 
 ## Configure `config/deploy.yml`
 
@@ -152,6 +152,24 @@ For repeated use, put the exports in a `.env.deploy` (gitignored) and `source` i
 ### Multiple targets (staging/production/...)
 
 For more than one deploy target, use one gitignored `.env.<target>` file per target (`.env.uat`, `.env.production`, ...), each defining that target's `KAMAL_DEPLOY_IP`/`_DOMAIN`/`_SSH_KEY` (plus `DATABASE_*` values if using the external Postgres/RDS branch above), with a committed `.env.<target>.example` template per target. Add `!/.env.*.example` to `.gitignore` alongside the existing `!/.env.example` so the templates stay tracked while the real files don't.
+
+### Deploying from GitHub Actions
+
+`.github/workflows/deploy.yml` deploys on demand (`workflow_dispatch` only - Actions → Deploy with Kamal → Run workflow). It runs `bin/kamal setup`, which installs Docker on a fresh server and is safe to rerun. Before the first run, the repo needs these under Settings → Secrets and variables → Actions:
+
+| Name | Kind | Value |
+| --- | --- | --- |
+| `SSH_PRIVATE_KEY` | Secret | Private key that can SSH into the server as `ssh.user`. Written to `~/.ssh/deploy_key`, and `KAMAL_SSH_KEY` points at it. |
+| `RAILS_MASTER_KEY` | Secret | Contents of `config/master.key`. Written to `config/master.key` for `.kamal/secrets` to read. |
+| `KAMAL_DEPLOY_IP` | Variable | The server's public IP. |
+| `KAMAL_DEPLOY_DOMAIN` | Variable | The domain whose DNS points at that IP. |
+
+Notes:
+
+- The first step fails with a named error if any of the four is empty. An unset repo variable arrives as an empty string, which `ENV.fetch` lets through.
+- The optional `destination` input is passed as `bin/kamal setup -d <destination>`. Kamal then merges `config/deploy.<destination>.yml` and reads `.kamal/secrets-common` plus `.kamal/secrets.<destination>` - **not** `.kamal/secrets` - so create those files (with the `RAILS_MASTER_KEY=$(cat config/master.key)` line) before deploying a destination.
+- The two variables are repo-wide, so every destination gets the same IP and domain unless its `config/deploy.<destination>.yml` overrides `servers` and `proxy.host`.
+- The server's SSH host key is accepted on first connect (net-ssh's default), as a fresh runner has no `known_hosts`.
 
 ### Database initialisation
 

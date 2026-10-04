@@ -44,7 +44,7 @@ cd myapp
 bin/rails layered:foundation:setup            # or just ask your AI coding agent to get started
 ```
 
-The `setup` task renames the app from `LayeredFoundationRails` to your chosen name across the codebase, replaces `README.md` and `AGENTS.md` with fresh scaffolds, and removes the licensing and template files you no longer need. The repo ships an `AGENTS.md`, so opening the project in any AI coding agent and asking it to get started will run this for you - just give it a name.
+The `setup` task renames the app from `LayeredFoundationRails` to your chosen name across the codebase, replaces `README.md` and `AGENTS.md` with fresh scaffolds, generates `config/credentials.yml.enc` and `config/master.key` if the app has no credentials yet (an existing `config/credentials.yml.enc` is kept - if its `config/master.key` is missing, the task tells you where to get it), and removes the licensing and template files you no longer need. The repo ships an `AGENTS.md`, so opening the project in any AI coding agent and asking it to get started will run this for you - just give it a name.
 
 ### Adding authentication (optional)
 
@@ -113,6 +113,19 @@ This repo ships a [`kamal-deploy`](.claude/skills/kamal-deploy/SKILL.md) agent s
   bin/kamal setup        # first time only
   bin/kamal deploy
   ```
+
+### Deploying from GitHub Actions
+
+`.github/workflows/deploy.yml` runs `bin/kamal setup` on demand (Actions → Deploy with Kamal → Run workflow). `setup` installs Docker on a fresh server and is safe to rerun. Before the first run, add these under Settings → Secrets and variables → Actions:
+
+| Name | Kind | Value |
+| --- | --- | --- |
+| `SSH_PRIVATE_KEY` | Secret | Private key that can SSH into the server as `ssh.user` |
+| `RAILS_MASTER_KEY` | Secret | Contents of your `config/master.key` |
+| `KAMAL_DEPLOY_IP` | Variable | The server's public IP |
+| `KAMAL_DEPLOY_DOMAIN` | Variable | The domain pointed at that IP |
+
+The workflow checks all four are set before it deploys. Its optional `destination` input is passed to Kamal as `-d`.
 
 See the skill for the full first-time recipe (server bootstrap, database initialisation, optional hardening) and the "when to outgrow this setup" notes.
 

@@ -26,6 +26,7 @@ bin/rails layered:foundation:setup
 ## What the task does
 
 - Rewrites `LayeredFoundationRails`, `layered_foundation_rails`, and `layered-foundation-rails` to the new name across the codebase.
+- Generates `config/credentials.yml.enc` and `config/master.key` (gitignored) if `config/credentials.yml.enc` is missing - production won't boot without a `secret_key_base`. The starter ships no credentials, so an existing file belongs to the app (Layered commits one when it creates an app) and is kept. If it exists but `config/master.key` doesn't, the task says so: get the key (for apps created in Layered, it's on the app's GitHub integration page) and save it as `config/master.key`.
 - Drops starter-only files (`LICENSE`, `NOTICE`, `TRADEMARK.md`, `CLA.md`, `template.rb`, and the setup task itself).
 - Replaces `README.md` and this `AGENTS.md` file with fresh scaffolds for the user (and their agents) to build on.
 

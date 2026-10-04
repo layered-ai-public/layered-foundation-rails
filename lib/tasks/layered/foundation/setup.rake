@@ -112,6 +112,38 @@ namespace :layered do
       puts "         Run 'bin/rails generate layered:ui:install_agent_skill' after bin/setup."
     end
 
+    # The starter ships without credentials, so an existing credentials.yml.enc
+    # belongs to this app (Layered commits one when it creates an app from the
+    # template, and holds its key) - never replace it. Production won't boot
+    # without a secret_key_base, so generate credentials when there are none.
+    credentials = root.join("config/credentials.yml.enc")
+    master_key  = root.join("config/master.key")
+    missing_master_key = false
+    puts
+    if credentials.exist?
+      if master_key.exist?
+        puts "Keeping existing config/credentials.yml.enc and config/master.key."
+      else
+        missing_master_key = true
+        puts "Keeping existing config/credentials.yml.enc, but config/master.key is missing."
+        puts "  Get this app's master key (for apps created in Layered, it's on the app's GitHub"
+        puts "  integration page) and save it as config/master.key. It's gitignored - don't commit it."
+      end
+    else
+      puts "Generating credentials..."
+      key_existed = master_key.exist?
+      unless system({ "EDITOR" => "true", "RAILS_MASTER_KEY" => nil }, "bin/rails", "credentials:edit", out: File::NULL) &&
+             credentials.exist? && master_key.exist?
+        abort "Aborted: could not generate credentials. Run 'EDITOR=true bin/rails credentials:edit', " \
+              "then delete lib/tasks/layered/foundation/setup.rake and the starter files by hand."
+      end
+      if key_existed
+        puts "Created config/credentials.yml.enc, encrypted with the existing config/master.key."
+      else
+        puts "Created config/credentials.yml.enc and config/master.key (gitignored - keep it safe)."
+      end
+    end
+
     %w[NOTICE TRADEMARK.md CLA.md LICENSE template.rb].each do |filename|
       file = root.join(filename)
       if file.exist?
@@ -134,6 +166,11 @@ namespace :layered do
     puts "Rename complete. Recommended next steps:"
     puts "  - Review the diff (or fresh tree)"
     puts "  - Review the new AGENTS.md - check it fits this app and add your own custom rules"
+    if missing_master_key
+      puts "  - Save this app's master key as config/master.key (for apps created in Layered, it's on the app's GitHub integration page)"
+    else
+      puts "  - Back up config/master.key somewhere safe (e.g. a password manager); deploys need it"
+    end
     puts "  - bin/setup"
     puts "  - bin/rails test"
     puts "  - Optionally install Devise authentication with: rake \"layered:foundation:install_devise[User]\""
