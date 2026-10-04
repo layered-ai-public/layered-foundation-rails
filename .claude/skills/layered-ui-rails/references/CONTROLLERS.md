@@ -196,33 +196,48 @@ Drag handle for resizing the panel width on desktop.
 
 ## Search form (`l-ui--search-form`)
 
-Manages multi-scope search forms with parameter preservation and Turbo frame support.
+Searches as the user types, and manages multi-scope search forms with parameter preservation and Turbo frame support.
 
-**Values:** `scope` (String, default `"q"`)
-**Actions:** `preserve`, `clear`, `rewriteLink`
+**Targets:** `input`, `clear`
+**Values:** `scope` (String, default `"q"`), `pageParam` (String, default `"page"` - Pagy's page key for this collection, given rather than derived from `scope`), `live` (Boolean, default `false`), `minChars` (Number, default `0`), `count` (Number, default `-1` - meaning no count was given, so nothing is announced)
+**Actions:** `search`, `clearSearch`, `toggleClear`, `submitNow`, `preserve`, `clear`, `rewriteLink`
 
 ```html
 <form data-controller="l-ui--search-form"
       data-l-ui--search-form-scope-value="q"
+      data-l-ui--search-form-page-param-value="page"
+      data-l-ui--search-form-live-value="true"
+      data-l-ui--search-form-count-value="12"
       data-action="submit->l-ui--search-form#preserve"
-      data-turbo-frame="results">
-  <!-- search fields -->
-  <button type="button" data-action="click->l-ui--search-form#clear">
-    Clear
-  </button>
+      data-turbo-frame="results"
+      data-turbo-action="replace"
+      role="search" aria-label="Search">
+  <input data-l-ui--search-form-target="input"
+         data-action="input->l-ui--search-form#search keydown.esc->l-ui--search-form#clearSearch">
+  <button type="button" data-l-ui--search-form-target="clear"
+          data-action="l-ui--search-form#clearSearch" hidden>Clear search</button>
 </form>
 ```
 
-When multiple search forms exist on one page (each with a different `scope` value), submitting one form automatically preserves the other forms' query parameters. The `page` param and any scoped page param matching the scope (e.g. `users_page` for scope `users_q`) are reset on submit so pagination returns to page 1.
+- **`search`** - debounced (300ms, longer than the combobox's, since a search here re-renders a whole collection). Submits with `requestSubmit()`, not `submit()`, so the `submit` event fires and `preserve` still runs. A keystroke arriving mid-request is fine: Turbo stops a frame submission already in flight, so no `AbortController` is needed here.
+- **`toggleClear`** - shows or hides the clear button to match the field. Only wired on a form that does not search as you type, where nothing else runs on a keystroke; `search` does it as part of its own work.
+- **`clearSearch`** - the ✕ and Escape in the field. Skips the debounce, and focuses the input *before* the button hides itself, so focus does not fall to the body (WCAG 2.4.3).
+- **Caret preservation** - a frame render replaces the form and the input being typed into. The value, selection and focus are stashed in module state (the only thing that survives the swap), keyed per form, and restored by the controller that connects in its place. Only a render answering one of this form's own searches restores focus, so a sort link or a page link never steals it; entries older than 5s are ignored.
+- **Announcements** - after a search, the result count goes to the layout's `#l-ui-live-region`, which sits outside every frame. The term is included in the message because a live region does not re-announce text identical to what it already holds.
+- **`clear`** - for a *hand-built* clear link beside an unframed form, which has no controller of its own (`l_ui_search_form` wires the in-field clear button to `clearSearch` instead, on any framed form, live or not). It rewrites the clicked link's href so the other scopes' params survive the navigation; give the link its own `data-turbo-frame` and `data-turbo-action` to keep it inside the frame.
+
+When multiple search forms exist on one page (each with a different `scope` value), submitting one form automatically preserves the other forms' query parameters. This form's own `pageParam` is reset on submit so pagination returns to page 1 - give each collection its own (`page_param: "users_page"` on the helper, `l_ui__search_form_page_param_value` on the frame), since Pagy's `page_key:` is the host's choice and cannot be inferred from the Ransack `search_key`.
 
 **`rewriteLink`** - merges current URL params into a clicked link's href. Useful for pagination links inside Turbo Frames where the server-rendered href may be missing params from other scopes. Attach to a parent element (e.g. the Turbo Frame):
 
 ```html
 &lt;%= turbo_frame_tag "users_collection", data: { turbo_action: "advance",
       controller: "l-ui--search-form", l_ui__search_form_scope_value: "users_q",
+      l_ui__search_form_page_param_value: "users_page",
       action: "click->l-ui--search-form#rewriteLink" } do %&gt;
   &lt;%= l_ui_search_form(@users_q, url: users_path, fields: [:name, :email],
-                       clear: true, turbo_frame: "users_collection") %&gt;
+                       live: true, count: @users_pagy.count,
+                       page_param: "users_page", turbo_frame: "users_collection") %&gt;
   &lt;%= l_ui_table(@users, ..., query: @users_q, turbo_frame: "users_collection") %&gt;
   &lt;%= l_ui_pagy(@users_pagy) %&gt;
 &lt;% end %&gt;
