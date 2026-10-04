@@ -39,7 +39,9 @@ gem "thruster", require: false
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 gem "image_processing", "~> 2.2"
-gem "ruby-vips"
+# Active Storage loads it itself and skips vips if libvips is missing. Requiring
+# it here would crash boot without libvips (e.g. bin/importmap audit in CI).
+gem "ruby-vips", require: false
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
