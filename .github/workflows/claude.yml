@@ -16,6 +16,10 @@ name: Claude
 # app on this repository and set the repository variable CLAUDE_GITHUB_APP to
 # true.
 
+# Names each run for the issue or pull request it answers, which is how Layered
+# finds the run an issue it opened started.
+run-name: "Claude on #${{ github.event.issue.number || github.event.pull_request.number }}"
+
 on:
   issue_comment:
     types: [created]
