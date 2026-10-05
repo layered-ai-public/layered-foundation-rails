@@ -29,6 +29,7 @@ If the user would rather do it on GitHub (e.g. no local Ruby yet), `.github/work
 
 - The repo needs "Allow GitHub Actions to create and approve pull requests" enabled (Settings → Actions → General), or the PR step fails after pushing the branch.
 - If the repo had no `config/credentials.yml.enc`, the workflow doesn't commit the one it generates, because its `config/master.key` can't leave the runner. After merging, they run `EDITOR=true bin/rails credentials:edit` locally and commit `config/credentials.yml.enc`.
+- CI skips itself until setup has run, so the template's "Initial commit" and the credentials commit don't each get a full run. Its first job checks for `lib/tasks/layered/foundation/setup.rake`, which setup deletes, and every other job is skipped while it's there. The setup PR runs everything. The template repository itself always runs in full.
 - PRs opened by `GITHUB_TOKEN` don't trigger CI. Close and reopen the PR to run it. The `open_pull_request` input (default true) can be set to false to push the branch without opening a PR. Layered does this and opens the PR with its GitHub App token, so CI does run.
 - After they merge, pull the branch locally and re-read `AGENTS.md`, just as after running the task yourself.
 

@@ -50,6 +50,7 @@ The `setup` task renames the app from `LayeredFoundationRails` to your chosen na
 
 - Turn on "Allow GitHub Actions to create and approve pull requests" under Settings → Actions → General, or the PR step will fail.
 - If the repo has no `config/credentials.yml.enc`, the workflow won't commit the one it generates, because its `config/master.key` would be lost with the runner. After merging, run `EDITOR=true bin/rails credentials:edit` locally, commit `config/credentials.yml.enc`, and keep `config/master.key` safe.
+- CI skips itself until setup has run, so the template's "Initial commit" and the credentials commit don't each get a full run. Its first job checks for `lib/tasks/layered/foundation/setup.rake`, which setup deletes, and every other job is skipped while it's there. The setup PR runs everything. The template repository itself always runs in full.
 - PRs opened by the workflow's `GITHUB_TOKEN` don't trigger CI. Close and reopen the PR to run it. (Layered avoids this by unticking the `open_pull_request` input, which pushes the branch without opening a PR, and opening the PR itself with its GitHub App token.)
 
 Once setup has run, the workflow just fails with an explanation. You can delete it.

@@ -6,7 +6,44 @@ on:
     branches: [ main ]
 
 jobs:
+  # A new app is pushed to twice before it's set up: GitHub's "Initial commit"
+  # from the template, then the commit with its own Rails credentials. Both are
+  # the template under its old name, replaced minutes later by the setup PR,
+  # which gets a full run of its own. So every other job waits on this one and
+  # is skipped until setup has run.
+  #
+  # The marker is the one setup.yml uses: the setup task deletes its own rake
+  # file. The template repository keeps that file forever, so it's named here
+  # and always runs everything.
+  #
+  # Skipped jobs count as passing for a required status check, so branch
+  # protection on main isn't blocked by a skipped run.
+  setup_status:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - name: Checkout the setup marker only
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: lib/tasks/layered/foundation/setup.rake
+          sparse-checkout-cone-mode: false
+
+      - name: Check whether setup has run
+        id: check
+        env:
+          IS_TEMPLATE: ${{ github.repository == 'layered-ai-public/layered-foundation-rails' }}
+        run: |
+          if [ "$IS_TEMPLATE" = "true" ] || [ ! -f lib/tasks/layered/foundation/setup.rake ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Setup hasn't run yet, so CI is skipped. It runs in full on the setup pull request."
+          fi
+
   scan_ruby:
+    needs: setup_status
+    if: needs.setup_status.outputs.ready == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -25,6 +62,8 @@ jobs:
         run: bin/bundler-audit
 
   scan_js:
+    needs: setup_status
+    if: needs.setup_status.outputs.ready == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -40,6 +79,8 @@ jobs:
         run: bin/importmap audit
 
   lint:
+    needs: setup_status
+    if: needs.setup_status.outputs.ready == 'true'
     runs-on: ubuntu-latest
     env:
       RUBOCOP_CACHE_ROOT: tmp/rubocop
@@ -66,6 +107,8 @@ jobs:
         run: bin/rubocop -f github
 
   test:
+    needs: setup_status
+    if: needs.setup_status.outputs.ready == 'true'
     runs-on: ubuntu-latest
 
     # services:
@@ -94,6 +137,8 @@ jobs:
         run: bin/rails db:test:prepare test
 
   system-test:
+    needs: setup_status
+    if: needs.setup_status.outputs.ready == 'true'
     runs-on: ubuntu-latest
 
     # services:
