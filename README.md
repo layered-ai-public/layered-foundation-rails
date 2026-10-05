@@ -139,7 +139,7 @@ See the skill for the full first-time recipe (server bootstrap, database initial
 
 ## Working with Claude on GitHub
 
-`.github/workflows/claude.yml` runs [Claude Code](https://github.com/anthropics/claude-code-action) when someone mentions `@claude` in an issue, a pull request comment or a review. It needs one of these repository secrets:
+`.github/workflows/claude.yml` runs [Claude Code](https://github.com/anthropics/claude-code-action) when someone mentions `@claude` in an issue, a pull request's description, a comment or a review. On a pull request it pushes to the pull request's own branch. It needs one of these repository secrets:
 
 | Name | Value |
 | --- | --- |
