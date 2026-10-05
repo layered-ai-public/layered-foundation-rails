@@ -137,6 +137,17 @@ The workflow checks all four are set before it deploys. Its optional `destinatio
 
 See the skill for the full first-time recipe (server bootstrap, database initialisation, optional hardening) and the "when to outgrow this setup" notes.
 
+## Working with Claude on GitHub
+
+`.github/workflows/claude.yml` runs [Claude Code](https://github.com/anthropics/claude-code-action) when someone mentions `@claude` in an issue, a pull request comment or a review. It needs one of these repository secrets:
+
+| Name | Value |
+| --- | --- |
+| `ANTHROPIC_API_KEY` | An API key from console.anthropic.com |
+| `CLAUDE_CODE_OAUTH_TOKEN` | A Pro or Max subscription token, from `claude setup-token` |
+
+Claude acts with the workflow's `GITHUB_TOKEN` by default, so CI doesn't run on its pushes until someone else pushes. To have it act as the [Claude GitHub App](https://github.com/apps/claude) instead, install the app on the repository and set the repository variable `CLAUDE_GITHUB_APP` to `true`.
+
 ## Contributing
 
 This project is still in its early days. We welcome issues, feedback, and ideas - they genuinely help shape the direction of the project. That said, we're holding off on accepting pull requests for now to stay focused on getting the foundations right. Thank you for your patience and interest. See [CLA.md](CLA.md) for the full policy.
