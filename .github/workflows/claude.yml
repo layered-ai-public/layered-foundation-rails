@@ -70,7 +70,11 @@ jobs:
         with:
           fetch-depth: 1
 
-      # Claude runs bin/rails, the tests and rubocop as it works.
+      # Claude runs bin/rails, the tests and rubocop as it works. The tests need
+      # what ci.yml's test job installs.
+      - name: Install packages
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips
+
       - uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
@@ -81,3 +85,8 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Empty means the Claude GitHub App, through the OIDC exchange.
           github_token: ${{ vars.CLAUDE_GITHUB_APP != 'true' && secrets.GITHUB_TOKEN || '' }}
+          # The action allows Claude no shell commands beyond git unless they're
+          # listed, so it couldn't install gems or check its work. These are
+          # the steps of bin/ci.
+          claude_args: |
+            --allowedTools "Bash(bundle:*),Bash(bin/setup:*),Bash(bin/rails:*),Bash(bin/rubocop:*),Bash(bin/brakeman:*),Bash(bin/bundler-audit:*),Bash(bin/importmap:*),Bash(bin/ci:*)"
