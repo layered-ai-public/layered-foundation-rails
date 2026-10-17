@@ -54,9 +54,12 @@ you found, what you tried - not afterwards as a summary of the diff.
 Never edit a record that has already merged. A later change that reverses it gets its
 own record with `supersedes`.
 
-File: `docs/reasoning/YYYY-MM-DD-short-slug.md`, dated the day the change was made, the
-slug from the title. If that file already exists for a different change, add `-2`
-(then `-3`). No number: Layered numbers a layer by its pull request once it merges,
+File: `docs/reasoning/YYYY-MM-DD-HHMM-short-slug.md`, stamped with the UTC date and time
+you first write the record (`date -u +%Y-%m-%d-%H%M`), the slug from the title. UTC keeps
+records written in different time zones sorting by name in the order they were written.
+Keep the filename once it's written: later commits on the branch edit the file rather
+than renaming it. If that file already exists for a different change, add `-2` (then
+`-3`). No sequence number: Layered numbers a layer by its pull request once it merges,
 which doesn't exist yet while you're writing.
 
 ```markdown
@@ -70,9 +73,9 @@ paths:
 request: https://github.com/acme/shop/issues/142
 enforced_by:
   - test/config/no_redis_test.rb
-supersedes: 2026-03-02-use-sidekiq-for-jobs.md
+supersedes: 2026-03-02-1015-use-sidekiq-for-jobs.md
 builds_on:
-  - 2026-10-17-start-from-layered-foundation-rails.md
+  - 2026-10-16-2343-start-from-layered-foundation-rails.md
 ---
 
 ## Change
@@ -108,7 +111,7 @@ Tests pass; job latency unchanged in development.
 ### Front matter
 
 - `title` - what the change does, in the imperative, under 80 characters.
-- `date` - `YYYY-MM-DD`.
+- `date` - `YYYY-MM-DD`, the same UTC day as the filename.
 - `paths` - the areas the change was about: directories (trailing `/`) and the few
   files that matter, not every file touched. Start from `git diff --name-only` and
   collapse it. This is how the next change finds the records that concern it, and
