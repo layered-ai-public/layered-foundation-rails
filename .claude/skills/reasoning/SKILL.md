@@ -23,7 +23,7 @@ with it. Layered Cloud reads them from there.
 1. List `docs/reasoning/` and read each record's front matter. It's short, so this is
    cheap.
 2. Read in full every record whose `paths` overlap the files you're about to change, or
-   whose title is about the same thing.
+   whose title is about the same thing, and the records those name in `builds_on`.
 3. Before relying on a record, check no other record names it in `supersedes`. Merged
    records are never edited, so the old one won't say it has been replaced.
 4. Treat what they decided as settled. Don't bring back something a record ruled out,
@@ -33,6 +33,9 @@ with it. Layered Cloud reads them from there.
 5. If the task does reverse an earlier decision, do it openly: write a new record, name
    the old one in `supersedes`, and say in **Why** what has changed since - ideally the
    old record's **Revisit if** condition.
+6. When you supersede a record, look for records that name it in `builds_on`. Their
+   reasoning rested on it, so check it still holds, and say in your record's **Why** if
+   it doesn't.
 
 If the repository keeps other written records of past decisions - design notes, decision
 logs, docs written before these records began - read the ones for the same area too.
@@ -68,6 +71,8 @@ request: https://github.com/acme/shop/issues/142
 enforced_by:
   - test/config/no_redis_test.rb
 supersedes: 2026-03-02-use-sidekiq-for-jobs.md
+builds_on:
+  - 2026-10-17-start-from-layered-foundation-rails.md
 ---
 
 ## Change
@@ -113,6 +118,9 @@ Tests pass; job latency unchanged in development.
   A record is advice; these are what actually hold the line. Add one when a decision
   is easy to undo by accident.
 - `supersedes` - optional; the filename of an earlier record this one reverses.
+- `builds_on` - optional; filenames of earlier records this one extends or relies on
+  without replacing them. Name the ones whose reasoning yours depends on, so that if
+  one is later superseded, this record is checked too.
 
 Don't add a commit SHA: the record is in the same commit as the code, so it can't name
 it, and squash merges change it anyway. Layered links the merge commit itself.
