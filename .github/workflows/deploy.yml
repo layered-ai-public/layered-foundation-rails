@@ -3,43 +3,49 @@ name: Deploy with Kamal
 on:
   workflow_dispatch:
     inputs:
+      environment:
+        description: GitHub Environment holding the server's settings
+        required: true
       destination:
         description: Kamal destination (blank for the default config)
         required: false
 
 concurrency:
-  group: deploy-${{ inputs.destination || 'default' }}
+  group: deploy-${{ inputs.environment }}
   cancel-in-progress: false
-
-# config/deploy.yml reads these. Set them as repository variables
-# (Settings → Secrets and variables → Actions → Variables).
-env:
-  KAMAL_DEPLOY_IP: ${{ vars.KAMAL_DEPLOY_IP }}
-  KAMAL_DEPLOY_DOMAIN: ${{ vars.KAMAL_DEPLOY_DOMAIN }}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     timeout-minutes: 30
+    # config/deploy.yml reads these. Layered writes them as variables of the
+    # environment being deployed (Settings → Environments); one set at
+    # repository level is used for any environment that doesn't set its own.
+    # Only a job naming the environment can see its variables.
+    env:
+      KAMAL_DEPLOY_IP: ${{ vars.KAMAL_DEPLOY_IP }}
+      KAMAL_DEPLOY_DOMAIN: ${{ vars.KAMAL_DEPLOY_DOMAIN }}
     steps:
-      # An unset repo variable or secret arrives as an empty string, which gets
+      # An unset variable or secret arrives as an empty string, which gets
       # past ENV.fetch in config/deploy.yml and fails later with a confusing
       # error. Check up front instead.
       - name: Check deploy configuration
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+          DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           missing=0
           for name in KAMAL_DEPLOY_IP KAMAL_DEPLOY_DOMAIN; do
             if [ -z "${!name}" ]; then
-              echo "::error::Repository variable $name is not set (Settings → Secrets and variables → Actions → Variables)."
+              echo "::error::Variable $name is not set for the $DEPLOY_ENVIRONMENT environment (Settings → Environments)."
               missing=1
             fi
           done
           for name in SSH_PRIVATE_KEY RAILS_MASTER_KEY; do
             if [ -z "${!name}" ]; then
-              echo "::error::Repository secret $name is not set (Settings → Secrets and variables → Actions → Secrets)."
+              echo "::error::Secret $name is not set for the $DEPLOY_ENVIRONMENT environment (Settings → Environments)."
               missing=1
             fi
           done

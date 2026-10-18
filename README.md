@@ -125,7 +125,7 @@ This repo ships a [`kamal-deploy`](.claude/skills/kamal-deploy/SKILL.md) agent s
 
 ### Deploying from GitHub Actions
 
-`.github/workflows/deploy.yml` runs `bin/kamal setup` on demand (Actions → Deploy with Kamal → Run workflow). `setup` installs Docker on a fresh server and is safe to rerun. Before the first run, add these under Settings → Secrets and variables → Actions:
+`.github/workflows/deploy.yml` runs `bin/kamal setup` on demand (Actions → Deploy with Kamal → Run workflow), in the GitHub Environment named by its `environment` input, such as `production`. `setup` installs Docker on a fresh server and is safe to rerun. Before the first run, add these to that environment under Settings → Environments (Layered does this when you save an environment's server). Any set under Settings → Secrets and variables → Actions apply to every environment that doesn't set its own.
 
 | Name | Kind | Value |
 | --- | --- | --- |
