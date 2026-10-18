@@ -86,7 +86,9 @@ jobs:
           # Empty means the Claude GitHub App, through the OIDC exchange.
           github_token: ${{ vars.CLAUDE_GITHUB_APP != 'true' && secrets.GITHUB_TOKEN || '' }}
           # The action allows Claude no shell commands beyond git unless they're
-          # listed, so it couldn't install gems or check its work. These are
-          # the steps of bin/ci.
+          # listed. A list of the app's tools still refused ordinary commands,
+          # including a pipe into tail, and it guarded nothing: bundle exec and
+          # bin/rails runner already run any code. What keeps this safe is that
+          # the action only answers people with write access to the repository.
           claude_args: |
-            --allowedTools "Bash(bundle:*),Bash(bin/setup:*),Bash(bin/rails:*),Bash(bin/rubocop:*),Bash(bin/brakeman:*),Bash(bin/bundler-audit:*),Bash(bin/importmap:*),Bash(bin/ci:*)"
+            --allowedTools "Bash"
