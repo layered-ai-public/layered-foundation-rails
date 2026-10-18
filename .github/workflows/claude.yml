@@ -10,12 +10,10 @@ name: Claude
 #   ANTHROPIC_API_KEY        an API key from console.anthropic.com
 #   CLAUDE_CODE_OAUTH_TOKEN  a Pro or Max subscription token, from `claude setup-token`
 #
-# Claude acts on GitHub with this workflow's GITHUB_TOKEN by default. Pushes
-# and pull requests made with that token don't trigger other workflows, so CI
-# won't run on Claude's work until someone pushes to it. To have Claude act as
-# the Claude GitHub App instead (https://github.com/apps/claude), install the
-# app on this repository and set the repository variable CLAUDE_GITHUB_APP to
-# true.
+# Claude acts on GitHub with this workflow's GITHUB_TOKEN, so the Claude GitHub
+# App doesn't need installing. Pushes and pull requests made with that token
+# don't trigger other workflows, so CI won't run on Claude's work until someone
+# pushes to it.
 
 # Names each run for the issue or pull request it answers, which is how Layered
 # finds the run an issue it opened started.
@@ -49,8 +47,6 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
-      # The Claude GitHub App's token is exchanged for this workflow's OIDC token.
-      id-token: write
       # Lets Claude read CI results on pull requests.
       actions: read
     steps:
@@ -83,8 +79,8 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # Empty means the Claude GitHub App, through the OIDC exchange.
-          github_token: ${{ vars.CLAUDE_GITHUB_APP != 'true' && secrets.GITHUB_TOKEN || '' }}
+          # Left empty, the action would fetch a Claude GitHub App token instead.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           # The action allows Claude no shell commands beyond git unless they're
           # listed. A list of the app's tools still refused ordinary commands,
           # including a pipe into tail, and it guarded nothing: bundle exec and
