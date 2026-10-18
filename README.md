@@ -149,7 +149,7 @@ See the skill for the full first-time recipe (server bootstrap, database initial
 | `ANTHROPIC_API_KEY` | An API key from console.anthropic.com |
 | `CLAUDE_CODE_OAUTH_TOKEN` | A Pro or Max subscription token, from `claude setup-token` |
 
-Claude acts with the workflow's `GITHUB_TOKEN` by default, so CI doesn't run on its pushes until someone else pushes. To have it act as the [Claude GitHub App](https://github.com/apps/claude) instead, install the app on the repository and set the repository variable `CLAUDE_GITHUB_APP` to `true`.
+Claude acts with the workflow's `GITHUB_TOKEN`, so the Claude GitHub App doesn't need installing. CI doesn't run on its pushes until someone else pushes.
 
 ## Contributing
 
