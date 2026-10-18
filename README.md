@@ -136,6 +136,8 @@ This repo ships a [`kamal-deploy`](.claude/skills/kamal-deploy/SKILL.md) agent s
 
 The workflow checks all four are set before it deploys. Its optional `destination` input is passed to Kamal as `-d`.
 
+Environments of several apps can share a server, each with its own deploy key. When one is added to a server another already deploys to, Layered runs `.github/workflows/server-keys.yml` as the environment already there, which logs in to the server and adds the new key. It only replaces the keys Layered added (labelled `layered-deploy`), so keys you added yourself stay.
+
 See the skill for the full first-time recipe (server bootstrap, database initialisation, optional hardening) and the "when to outgrow this setup" notes.
 
 ## Working with Claude on GitHub

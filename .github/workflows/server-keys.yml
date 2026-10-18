@@ -1,0 +1,73 @@
+name: Authorize deploy keys
+run-name: Authorize deploy keys on ${{ inputs.server }}
+
+# Layered runs this to let a new environment deploy to a server another
+# environment already deploys to, so nobody has to log in to add its key. It
+# logs in with this environment's key, already on the server, and replaces the
+# keys Layered added before (those labelled layered-deploy) with the ones
+# given: every environment deploying there. Keys added any other way are left
+# alone.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub Environment whose key is on the server
+        required: true
+      server:
+        description: The server's IP, which must be the environment's
+        required: true
+      authorized_keys:
+        description: Every key deploying to the server, one per line
+        required: true
+
+concurrency:
+  group: server-keys-${{ inputs.server }}
+  cancel-in-progress: false
+
+jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 5
+    env:
+      KAMAL_DEPLOY_IP: ${{ vars.KAMAL_DEPLOY_IP }}
+      KAMAL_DEPLOY_DOMAIN: ${{ vars.KAMAL_DEPLOY_DOMAIN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check the keys
+        env:
+          SERVER: ${{ inputs.server }}
+          AUTHORIZED_KEYS: ${{ inputs.authorized_keys }}
+        run: |
+          if [ "$SERVER" != "$KAMAL_DEPLOY_IP" ]; then
+            echo "::error::This environment deploys to $KAMAL_DEPLOY_IP, not $SERVER."
+            exit 1
+          fi
+          printf '%s\n' "$AUTHORIZED_KEYS" | sed '/^$/d' > "$RUNNER_TEMP/authorized_keys"
+          # Only Layered's public keys, one to a line, so nothing else gets in.
+          if grep -vE '^ssh-(rsa|ed25519) [A-Za-z0-9+/=]+ layered-deploy [A-Za-z0-9._/-]+$' "$RUNNER_TEMP/authorized_keys"; then
+            echo "::error::Those lines aren't Layered deploy keys."
+            exit 1
+          fi
+
+      - name: Write the deploy key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      # Logs in as config/deploy.yml's ssh user, as Kamal does.
+      - name: Replace Layered's keys on the server
+        run: |
+          user=$(ruby -ryaml -rerb -e 'puts YAML.load(ERB.new(File.read("config/deploy.yml")).result).dig("ssh", "user") || "root"')
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$user@$KAMAL_DEPLOY_IP" '
+            set -e
+            mkdir -p ~/.ssh && chmod 700 ~/.ssh
+            touch ~/.ssh/authorized_keys
+            { grep -v " layered-deploy " ~/.ssh/authorized_keys || true; cat; } > ~/.ssh/authorized_keys.layered
+            chmod 600 ~/.ssh/authorized_keys.layered
+            mv ~/.ssh/authorized_keys.layered ~/.ssh/authorized_keys
+          ' < "$RUNNER_TEMP/authorized_keys"
