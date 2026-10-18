@@ -1,0 +1,137 @@
+name: Codex
+
+# Runs Codex when someone opens an issue that mentions @codex. Codex makes the
+# change, with its reasoning record in docs/reasoning, and this workflow
+# pushes it to a new branch, codex/issue-<number>-<YYYYMMDD-HHMM>, and
+# answers on the issue with what Codex said.
+#
+# It needs the OPENAI_API_KEY repository secret (Settings → Secrets and
+# variables → Actions → Secrets): an API key from platform.openai.com. Layered
+# writes it when Codex is added to the app with a key.
+#
+# Codex only answers people with write access to the repository; the action
+# checks. It runs without network access, so everything it needs is installed
+# before it starts. Pushes made with this workflow's GITHUB_TOKEN don't
+# trigger other workflows, so CI won't run on Codex's branch until someone
+# pushes to it.
+
+# Names each run for the issue it answers, which is how Layered finds the run
+# an issue it opened started.
+run-name: "Codex on #${{ github.event.issue.number }}"
+
+on:
+  issues:
+    types: [opened, assigned]
+
+jobs:
+  codex:
+    if: contains(github.event.issue.body, '@codex') || contains(github.event.issue.title, '@codex')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      # An unset secret arrives as an empty string, and the action's own error
+      # for that doesn't say where to set one.
+      - name: Check for a key
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::Set the OPENAI_API_KEY repository secret (Settings → Secrets and variables → Actions → Secrets)."
+            exit 1
+          fi
+
+      # Codex has no need of the token, so it isn't left in the checkout for
+      # it to find; the push below brings its own.
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # Codex runs bin/rails, the tests and rubocop as it works, with no
+      # network. The tests need what ci.yml's test job installs.
+      - name: Install packages
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Start a branch
+        id: branch
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          branch="codex/issue-${ISSUE_NUMBER}-$(date -u +%Y%m%d-%H%M)"
+          git checkout -b "$branch"
+          echo "name=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Run Codex
+        id: codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          permission-profile: ":workspace"
+          prompt: |
+            You're working on issue #${{ github.event.issue.number }} in ${{ github.repository }}.
+            Make the change it asks for in this checkout.
+
+            Follow AGENTS.md. Every change ships with its reasoning: before changing code, read the
+            records in docs/reasoning/ for the same area; after changing it, write the change's record
+            in docs/reasoning/, as .claude/skills/reasoning/SKILL.md describes. Check your work with the
+            tests and rubocop, as bin/ci does.
+
+            Don't commit or push; the workflow commits whatever you leave in the checkout. If the issue
+            only asks a question, answer it and change nothing.
+
+            End with a short reply for the issue: what you changed and why, or your answer.
+
+            The issue:
+            ----
+            ${{ github.event.issue.title }}
+
+            ${{ github.event.issue.body }}
+
+      - name: Push the change
+        id: push
+        env:
+          BRANCH: ${{ steps.branch.outputs.name }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "$ISSUE_TITLE" -m "Co-authored-by: Codex <codex@openai.com>"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/$BRANCH"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Answer on the issue
+        if: always() && steps.codex.outcome != 'skipped'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          BRANCH: ${{ steps.branch.outputs.name }}
+          PUSHED: ${{ steps.push.outputs.pushed }}
+          CODEX_OUTCOME: ${{ steps.codex.outcome }}
+          FINAL_MESSAGE: ${{ steps.codex.outputs.final-message }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            if [ "$CODEX_OUTCOME" != "success" ]; then
+              echo "Codex didn't finish. See [the run]($RUN_URL)."
+            else
+              echo "$FINAL_MESSAGE"
+              if [ "$PUSHED" = "true" ]; then
+                echo
+                echo "Changes are on [\`$BRANCH\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/$BRANCH)."
+              fi
+            fi
+          } > reply.md
+          gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file reply.md
