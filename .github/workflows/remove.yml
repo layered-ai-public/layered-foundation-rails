@@ -84,13 +84,17 @@ jobs:
           bin/kamal accessory remove all -y ${DESTINATION:+-d "$DESTINATION"}
 
       # Last, since it's how this run gets in. Only the line with this key goes,
-      # whatever its label, so the server's other keys stay.
+      # whatever its label, so the server's other keys stay. Holds the lock
+      # server-keys.sh does, so neither overwrites the other's change.
       - name: Take the deploy key off the server
         run: |
           key=$(ssh-keygen -y -f ~/.ssh/deploy_key | cut -d' ' -f1,2)
           user=$(ruby -ryaml -rerb -e 'puts YAML.load(ERB.new(File.read("config/deploy.yml")).result).dig("ssh", "user") || "root"')
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$user@$KAMAL_DEPLOY_IP" "key='$key' sh -s" <<'SCRIPT'
           set -e
+          command -v flock > /dev/null || { echo "flock isn't installed on the server (it's in util-linux)" >&2; exit 1; }
+          exec 9> ~/.ssh/.layered.lock
+          flock -w 120 9 || { echo "Timed out waiting for another change to the server's keys" >&2; exit 1; }
           grep -vF -e "$key" ~/.ssh/authorized_keys > ~/.ssh/authorized_keys.layered || [ $? -eq 1 ]
           chmod 600 ~/.ssh/authorized_keys.layered
           mv ~/.ssh/authorized_keys.layered ~/.ssh/authorized_keys
