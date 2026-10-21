@@ -138,6 +138,10 @@ The workflow checks all four are set before it deploys. Its optional `destinatio
 
 Environments of several apps can share a server, each with its own deploy key. When one is added to a server another already deploys to, Layered runs `.github/workflows/server-keys.yml` as the environment already there, which logs in to the server and adds the new key. It only replaces the keys Layered added for that project (labelled `layered-deploy p<project>`), so another project's keys, and keys you added yourself, stay.
 
+When you delete an app in Layered and choose to take an environment off its server, Layered runs `.github/workflows/remove.yml` as that environment before deleting anything else. It runs `bin/kamal app remove` and `bin/kamal accessory remove all`, then takes the environment's deploy key off the server. Unlike `bin/kamal remove`, it leaves `kamal-proxy` and the registry, which other apps on the server share, and the app's storage volume, which holds its data.
+
+Both workflows hold a lock on the server (`~/.ssh/.layered.lock`, using `flock` from util-linux, which stock Linux images include) while they change `authorized_keys`, so runs for different apps or projects sharing the server wait for each other instead of overwriting each other's changes.
+
 See the skill for the full first-time recipe (server bootstrap, database initialisation, optional hardening) and the "when to outgrow this setup" notes.
 
 ## Working with Claude on GitHub

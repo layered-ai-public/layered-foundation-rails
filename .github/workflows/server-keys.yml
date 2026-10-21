@@ -65,7 +65,9 @@ jobs:
           fi
           {
             echo "tag=' layered-deploy $PROJECT '"
-            echo "cat > ~/.ssh/layered_keys <<'KEYS'"
+            # Its own file, as another project's run may be writing one too.
+            echo 'keys=$(mktemp)'
+            echo "cat > \"\$keys\" <<'KEYS'"
             cat "$RUNNER_TEMP/authorized_keys"
             echo "KEYS"
             cat .github/workflows/server-keys.sh

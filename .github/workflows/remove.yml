@@ -1,0 +1,101 @@
+name: Remove from the server
+run-name: Remove ${{ inputs.environment }} from its server (${{ inputs.request }})
+
+# Layered runs this when the app is deleted, to take an environment off the
+# server it deploys to: it stops the app and removes its containers, images
+# and accessories, then takes the environment's deploy key off the server.
+# Unlike `kamal remove`, it leaves kamal-proxy and the registry, which other
+# apps on the server share, and the app's storage volume, which holds its data.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub Environment holding the server's settings
+        required: true
+      destination:
+        description: Kamal destination (blank for the default config)
+        required: false
+      request:
+        description: Names the run, for Layered to find it
+        required: true
+
+# Waits for a deploy of the environment under way to finish first.
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  remove:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 15
+    env:
+      KAMAL_DEPLOY_IP: ${{ vars.KAMAL_DEPLOY_IP }}
+      KAMAL_DEPLOY_DOMAIN: ${{ vars.KAMAL_DEPLOY_DOMAIN }}
+    steps:
+      - name: Check deploy configuration
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+          DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          missing=0
+          for name in KAMAL_DEPLOY_IP KAMAL_DEPLOY_DOMAIN; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Variable $name is not set for the $DEPLOY_ENVIRONMENT environment (Settings → Environments)."
+              missing=1
+            fi
+          done
+          for name in SSH_PRIVATE_KEY RAILS_MASTER_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Secret $name is not set for the $DEPLOY_ENVIRONMENT environment (Settings → Environments)."
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - uses: actions/checkout@v6
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Write the deploy key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "KAMAL_SSH_KEY=$HOME/.ssh/deploy_key" >> "$GITHUB_ENV"
+
+      # .kamal/secrets reads the key from this file.
+      - name: Write the master key
+        env:
+          RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+        run: echo "$RAILS_MASTER_KEY" > config/master.key
+
+      # `app remove` takes the app's route out of kamal-proxy as it stops it.
+      - name: Remove the app
+        env:
+          DESTINATION: ${{ inputs.destination }}
+        run: |
+          bin/kamal app remove ${DESTINATION:+-d "$DESTINATION"}
+          bin/kamal accessory remove all -y ${DESTINATION:+-d "$DESTINATION"}
+
+      # Last, since it's how this run gets in. Only the line with this key goes,
+      # whatever its label, so the server's other keys stay. Holds the lock
+      # server-keys.sh does, so neither overwrites the other's change.
+      - name: Take the deploy key off the server
+        run: |
+          key=$(ssh-keygen -y -f ~/.ssh/deploy_key | cut -d' ' -f1,2)
+          user=$(ruby -ryaml -rerb -e 'puts YAML.load(ERB.new(File.read("config/deploy.yml")).result).dig("ssh", "user") || "root"')
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$user@$KAMAL_DEPLOY_IP" "key='$key' sh -s" <<'SCRIPT'
+          set -e
+          command -v flock > /dev/null || { echo "flock isn't installed on the server (it's in util-linux)" >&2; exit 1; }
+          exec 9> ~/.ssh/.layered.lock
+          flock -w 120 9 || { echo "Timed out waiting for another change to the server's keys" >&2; exit 1; }
+          grep -vF -e "$key" ~/.ssh/authorized_keys > ~/.ssh/authorized_keys.layered || [ $? -eq 1 ]
+          chmod 600 ~/.ssh/authorized_keys.layered
+          mv ~/.ssh/authorized_keys.layered ~/.ssh/authorized_keys
+          SCRIPT
