@@ -1,0 +1,160 @@
+name: opencode
+
+# Runs opencode when someone mentions /opencode in a comment on an issue or
+# pull request, a review comment, or a new issue or pull request. opencode
+# answers in the thread and pushes any changes it makes: to the pull request's
+# own branch when there is one, else to a new branch,
+# opencode/issue<number>-<timestamp>, with a pull request that closes the issue.
+#
+# It's /opencode rather than @opencode because an @mention notifies whichever
+# GitHub account has that name.
+#
+# The model is the OPENCODE_MODEL repository variable (Settings → Secrets and
+# variables → Actions → Variables), as provider/model, such as
+# anthropic/claude-sonnet-5-5 or openai/gpt-5.5. Unset, it's
+# anthropic/claude-sonnet-5-5. It needs the API key for that provider as a
+# repository secret, one of:
+#   ANTHROPIC_API_KEY   an API key from console.anthropic.com
+#   OPENAI_API_KEY      an API key from platform.openai.com
+#   OPENROUTER_API_KEY  an API key from openrouter.ai
+#   TOGETHER_API_KEY    an API key from api.together.ai, for togetherai/ models
+#   FIREWORKS_API_KEY   an API key from fireworks.ai, for fireworks-ai/ models
+#   GROQ_API_KEY        an API key from console.groq.com, for groq/ models
+#   CEREBRAS_API_KEY    an API key from cloud.cerebras.ai, for cerebras/ models
+#   GEMINI_API_KEY      an API key from aistudio.google.com, for google/ models
+#   XAI_API_KEY         an API key from console.x.ai, for xai/ models
+#   MISTRAL_API_KEY     an API key from console.mistral.ai, for mistral/ models
+#   OPENCODE_API_KEY    an API key from opencode.ai/zen, for opencode/ models
+#
+# Models made in China are used through hosts in the US, EU or UK (Together,
+# Fireworks, Groq, Cerebras, OpenCode Zen), not through their makers' own APIs, so DeepSeek,
+# Moonshot and Z.ai keys aren't passed.
+#
+# Another provider opencode supports needs its key added to both env blocks
+# below and to the check; models.dev lists each provider's variable name.
+#
+# opencode acts on GitHub with this workflow's GITHUB_TOKEN, so the opencode
+# GitHub App doesn't need installing. Opening a pull request with that token
+# needs "Allow GitHub Actions to create and approve pull requests" (Settings →
+# Actions → General). Pushes and pull requests made with it don't trigger other
+# workflows, so CI won't run on opencode's work until someone pushes to it.
+#
+# opencode only answers people with write access to the repository; it checks.
+# Like Claude, it runs any shell command and has network access, with the
+# token in the checkout so it can push.
+
+# Names each run for the issue or pull request it answers, which is how Layered
+# finds the run an issue it opened started.
+run-name: "opencode on #${{ github.event.issue.number || github.event.pull_request.number }}"
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  # A pull request from a fork gets no secrets, so this only works for
+  # branches in this repository.
+  pull_request:
+    types: [opened]
+
+jobs:
+  opencode:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/opencode')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '/opencode')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '/opencode') || contains(github.event.issue.title, '/opencode'))) ||
+      (github.event_name == 'pull_request' && (contains(github.event.pull_request.body, '/opencode') || contains(github.event.pull_request.title, '/opencode')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      # An unset secret arrives as an empty string, and opencode's own error for
+      # a missing key doesn't say where to set one.
+      - name: Check for a key
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
+          FIREWORKS_API_KEY: ${{ secrets.FIREWORKS_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY$OPENAI_API_KEY$OPENROUTER_API_KEY$TOGETHER_API_KEY$FIREWORKS_API_KEY$GROQ_API_KEY$CEREBRAS_API_KEY$GEMINI_API_KEY$XAI_API_KEY$MISTRAL_API_KEY$OPENCODE_API_KEY" ]; then
+            echo "::error::Set the API key for the provider in OPENCODE_MODEL as a repository secret (Settings → Secrets and variables → Actions → Secrets): ANTHROPIC_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY, TOGETHER_API_KEY, FIREWORKS_API_KEY, GROQ_API_KEY, CEREBRAS_API_KEY, GEMINI_API_KEY, XAI_API_KEY, MISTRAL_API_KEY or OPENCODE_API_KEY."
+            exit 1
+          fi
+
+      # opencode pushes with the credentials checkout leaves in .git/config.
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      # opencode commits as whoever git is configured as, and only configures
+      # that itself when it uses the opencode GitHub App.
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # opencode runs bin/rails, the tests and rubocop as it works. The tests
+      # need what ci.yml's test job installs.
+      - name: Install packages
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      # For a comment, opencode's instructions are the comment itself. A new
+      # issue or pull request has no comment, so opencode needs a prompt, and
+      # it treats the issue or pull request as context rather than as
+      # instructions. A prompt given for a comment would replace the comment,
+      # so it's only set for these two.
+      - name: Write the prompt
+        id: prompt
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          case "$EVENT_NAME" in
+            issues) subject="issue" ;;
+            pull_request) subject="pull request" ;;
+            *) exit 0 ;;
+          esac
+          {
+            echo "text<<PROMPT_EOF"
+            echo "Make the change this $subject asks for. If it only asks a question, answer it and change nothing."
+            echo "End with a short reply for the $subject: what you changed and why, or your answer."
+            echo "PROMPT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: anomalyco/opencode/github@latest
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
+          FIREWORKS_API_KEY: ${{ secrets.FIREWORKS_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: ${{ vars.OPENCODE_MODEL || 'anthropic/claude-sonnet-5-5' }}
+          # Skips the opencode GitHub App, and the OIDC token exchange that
+          # would need id-token: write.
+          use_github_token: true
+          mentions: /opencode
+          prompt: ${{ steps.prompt.outputs.text }}

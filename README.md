@@ -155,6 +155,27 @@ See the skill for the full first-time recipe (server bootstrap, database initial
 
 Claude acts with the workflow's `GITHUB_TOKEN`, so the Claude GitHub App doesn't need installing. CI doesn't run on its pushes until someone else pushes.
 
+## Working with opencode on GitHub
+
+`.github/workflows/opencode.yml` runs [opencode](https://opencode.ai/docs/github/) when someone mentions `/opencode` in an issue, a pull request's description, a comment or a review comment. On a pull request it pushes to the pull request's own branch; on an issue it pushes a new branch and opens a pull request that closes the issue. It's configured with:
+
+| Name | Kind | Value |
+| --- | --- | --- |
+| `OPENCODE_MODEL` | Variable | The model, as `provider/model`. Defaults to `anthropic/claude-sonnet-5-5` |
+| `ANTHROPIC_API_KEY` | Secret | An API key from console.anthropic.com, for `anthropic/` models |
+| `OPENAI_API_KEY` | Secret | An API key from platform.openai.com, for `openai/` models |
+| `OPENROUTER_API_KEY` | Secret | An API key from openrouter.ai, for `openrouter/` models |
+| `TOGETHER_API_KEY` | Secret | An API key from api.together.ai, for `togetherai/` models |
+| `FIREWORKS_API_KEY` | Secret | An API key from fireworks.ai, for `fireworks-ai/` models |
+| `GROQ_API_KEY` | Secret | An API key from console.groq.com, for `groq/` models |
+| `CEREBRAS_API_KEY` | Secret | An API key from cloud.cerebras.ai, for `cerebras/` models |
+| `GEMINI_API_KEY` | Secret | An API key from aistudio.google.com, for `google/` models |
+| `XAI_API_KEY` | Secret | An API key from console.x.ai, for `xai/` models |
+| `MISTRAL_API_KEY` | Secret | An API key from console.mistral.ai, for `mistral/` models |
+| `OPENCODE_API_KEY` | Secret | An API key from opencode.ai/zen, for `opencode/` models |
+
+Only the key for the model's provider is needed. Avoid OpenCode Zen's free models, some of which may use your data for training while they're free. Models made in China are reached through hosts in the US, EU or UK (Together, Fireworks, Groq, Cerebras, OpenCode Zen) rather than their makers' own APIs. Another provider opencode supports needs its key variable (listed on [models.dev](https://models.dev)) added to the workflow. opencode acts with the workflow's `GITHUB_TOKEN`, so the opencode GitHub App doesn't need installing, but opening pull requests needs "Allow GitHub Actions to create and approve pull requests" (Settings → Actions → General). CI doesn't run on its pushes until someone else pushes.
+
 ## Contributing
 
 This project is still in its early days. We welcome issues, feedback, and ideas - they genuinely help shape the direction of the project. That said, we're holding off on accepting pull requests for now to stay focused on getting the foundations right. Thank you for your patience and interest. See [CLA.md](CLA.md) for the full policy.
