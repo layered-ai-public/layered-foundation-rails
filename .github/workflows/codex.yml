@@ -26,7 +26,10 @@ on:
 jobs:
   codex:
     if: contains(github.event.issue.body, '@codex') || contains(github.event.issue.title, '@codex')
-    runs-on: ubuntu-latest
+    # The action can't drop sudo on Ubuntu 26.04, which ubuntu-latest now is:
+    # https://github.com/openai/codex-action/issues/188. Move back to
+    # ubuntu-latest once that's fixed.
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
       contents: write
