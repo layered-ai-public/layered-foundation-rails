@@ -48,10 +48,7 @@ namespace :layered do
     root = Pathname.new(Dir.pwd)
     # .github/workflows is skipped so the Set up app workflow can push the result:
     # GITHUB_TOKEN can't create or modify anything in that directory.
-    # docs/reasoning is skipped because its records are history: the first one
-    # names the template the app started from, which a rename would rewrite into
-    # the app's own name.
-    skip_dirs = %w[.git .github/workflows docs/reasoning node_modules tmp log storage vendor/bundle .bundle public/assets]
+    skip_dirs = %w[.git .github/workflows node_modules tmp log storage vendor/bundle .bundle public/assets]
 
     targets = []
     Dir.glob("**/*", File::FNM_DOTMATCH, base: root.to_s).each do |rel|

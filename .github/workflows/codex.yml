@@ -1,9 +1,9 @@
 name: Codex
 
 # Runs Codex when someone opens an issue that mentions @codex. Codex makes the
-# change, with its reasoning record in docs/reasoning, and this workflow
-# pushes it to a new branch, codex/issue-<number>-<YYYYMMDD-HHMM>, and
-# answers on the issue with what Codex said.
+# change, and this workflow pushes it to a new branch,
+# codex/issue-<number>-<YYYYMMDD-HHMM>, and answers on the issue with what
+# Codex said.
 #
 # It needs the OPENAI_API_KEY repository secret (Settings → Secrets and
 # variables → Actions → Secrets): an API key from platform.openai.com. Layered
@@ -78,10 +78,7 @@ jobs:
             You're working on issue #${{ github.event.issue.number }} in ${{ github.repository }}.
             Make the change it asks for in this checkout.
 
-            Follow AGENTS.md. Every change ships with its reasoning: before changing code, read the
-            records in docs/reasoning/ for the same area; after changing it, write the change's record
-            in docs/reasoning/, as .claude/skills/reasoning/SKILL.md describes. Check your work with the
-            tests and rubocop, as bin/ci does.
+            Follow AGENTS.md. Check your work with the tests and rubocop, as bin/ci does.
 
             Don't commit or push; the workflow commits whatever you leave in the checkout. If the issue
             only asks a question, answer it and change nothing.

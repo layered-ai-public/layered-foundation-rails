@@ -13,10 +13,6 @@ and high-signal - it's read on every task.
   code against it.** The skill won't appear in your skill list until you generate it -
   so you won't be reminded it exists. See [Bundled agent skills](#bundled-agent-skills---use-them).
 - **Don't add new gems without discussion and confirmation.**
-- **Every change ships as a layer: the code plus its reasoning.** Before changing code,
-  read the records in `docs/reasoning/` for the same area; after changing it, write or
-  update the change's record - what changed, why, and what was ruled out. Use the
-  `reasoning` skill. See [Reasoning records](#reasoning-records).
 
 ## Project overview
 
@@ -159,18 +155,6 @@ guarantee no page ever ships title-less, `ApplicationController` sets a default
   `before_action`), since the layout reads them at render time. A new section's base
   controller is a good place to set a section-wide default title.
 
-## Reasoning records
-
-`docs/reasoning/` holds one Markdown record per change: what changed, why, the options
-ruled out, the trade-offs accepted, when to revisit, and what was checked. They are how
-this app remembers its own decisions - git says what changed, the record says why - so
-an agent reads the ones for an area before changing it, and writes one with every
-change, on the same branch as the code. Merged records are never edited; a reversal
-gets a new record that supersedes the old. The `reasoning` skill has the format.
-
-The first record holds the decisions the template starts from. Layered Cloud shows each
-change as a layer - its code, its record and its deploys - read from here.
-
 ## Bundled agent skills - use them
 
 Project-local Claude Code skills live under `.claude/skills/`. They encode the
@@ -184,7 +168,6 @@ default:
 
 - **layered-ui-rails** - installed from the gem (matches the installed version); building views with the layout, components, helpers, and Stimulus controllers.
 - **kamal-deploy** - maintained in this repo; first-time deploy, changing the deploy target, debugging `kamal deploy`.
-- **reasoning** - maintained in this repo; reading the reasoning records before a change and writing one after it.
 
 The resource and assistant gems are optional (enable them in the `Gemfile` if needed).
 **When you enable one, follow these steps in order - do not skip ahead to writing
