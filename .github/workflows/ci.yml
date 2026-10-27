@@ -123,7 +123,7 @@ jobs:
       # archive.ubuntu.com instead.
       - name: Disable Azure Ubuntu mirror
         run: |
-          echo 'http://archive.ubuntu.com/ubuntu/ priority:1' | \
+          echo 'http://archive.ubuntu.com/ubuntu/' | \
             sudo tee /etc/apt/apt-mirrors.txt
 
           sudo sed -i \
@@ -171,7 +171,7 @@ jobs:
       # archive.ubuntu.com instead.
       - name: Disable Azure Ubuntu mirror
         run: |
-          echo 'http://archive.ubuntu.com/ubuntu/ priority:1' | \
+          echo 'http://archive.ubuntu.com/ubuntu/' | \
             sudo tee /etc/apt/apt-mirrors.txt
 
           sudo sed -i \
