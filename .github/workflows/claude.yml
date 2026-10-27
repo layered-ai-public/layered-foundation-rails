@@ -72,6 +72,24 @@ jobs:
         with:
           fetch-depth: 1
 
+      # The runners point apt at Azure's Ubuntu mirror
+      # (azure.archive.ubuntu.com), which is often very slow. Use
+      # archive.ubuntu.com instead.
+      - name: Disable Azure Ubuntu mirror
+        run: |
+          echo 'http://archive.ubuntu.com/ubuntu/ priority:1' | \
+            sudo tee /etc/apt/apt-mirrors.txt
+
+          sudo sed -i \
+            's|azure.archive.ubuntu.com|archive.ubuntu.com|g' \
+            /etc/apt/sources.list 2>/dev/null || true
+
+          if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
+            sudo sed -i \
+              's|azure.archive.ubuntu.com|archive.ubuntu.com|g' \
+              /etc/apt/sources.list.d/ubuntu.sources
+          fi
+
       # Claude runs bin/rails, the tests and rubocop as it works. The tests need
       # what ci.yml's test job installs.
       - name: Install packages
