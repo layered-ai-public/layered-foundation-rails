@@ -10,11 +10,12 @@ name: Claude
 #   ANTHROPIC_API_KEY        an API key from console.anthropic.com
 #   CLAUDE_CODE_OAUTH_TOKEN  a Pro or Max subscription token, from `claude setup-token`
 #
-# A line "Model: <id>" picks the model Claude runs, e.g. "Model: claude-opus-5-5".
-# It's read from the comment or review that mentions Claude, else from the
-# issue or pull request's description, so a thread keeps the model it was
-# started with. Layered writes one into each issue it opens. Without one,
-# Claude Code runs its own default.
+# A line `Model: "<id>"` picks the model Claude runs, e.g.
+# `Model: "claude-opus-5-5"`, or an alias like `Model: "opus"`. It's read from
+# the comment or review that mentions Claude, else from the issue or pull
+# request's description, so a thread keeps the model it was started with.
+# Layered writes one into each issue it opens, and each pull request it opens
+# for a change. Without one, Claude Code runs its own default.
 #
 # Claude acts on GitHub with this workflow's GITHUB_TOKEN, so the Claude GitHub
 # App doesn't need installing. Pushes and pull requests made with that token
@@ -100,9 +101,9 @@ jobs:
           bundler-cache: true
 
       # The last such line wins, which in an issue Layered opened is its own,
-      # after the prompt. Only a Claude model's id is taken (claude-...), so a
-      # prompt's "Model: User" isn't, and only its characters, as the text is
-      # anyone's who can comment.
+      # after the prompt. The id is quoted, so a prompt's "Model: User" isn't
+      # taken, and only an id's characters are, as the text is anyone's who
+      # can comment.
       - name: Read the model
         id: model
         env:
@@ -110,7 +111,7 @@ jobs:
           THREAD: ${{ github.event.issue.body || github.event.pull_request.body }}
         run: |
           model_in() {
-            printf '%s\n' "$1" | sed -nE 's/^[[:space:]]*Model:[[:space:]]*(claude-[A-Za-z0-9._-]+)[[:space:]]*$/\1/p' | tail -n 1
+            printf '%s\n' "$1" | sed -nE 's#^[[:space:]]*Model:[[:space:]]*"([A-Za-z0-9._/:-]+)"[[:space:]]*$#\1#p' | tail -n 1
           }
           model=$(model_in "$ASKED")
           [ -n "$model" ] || model=$(model_in "$THREAD")
