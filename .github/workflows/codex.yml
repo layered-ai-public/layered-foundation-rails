@@ -9,8 +9,8 @@ name: Codex
 # variables → Actions → Secrets): an API key from platform.openai.com. Layered
 # writes it when Codex is added to the app with a key.
 #
-# A line "Model: <id>" in the issue picks the model Codex runs, e.g.
-# "Model: gpt-6.1-sol". Layered writes one into each issue it opens. Without
+# A line `Model: "<id>"` in the issue picks the model Codex runs, e.g.
+# `Model: "gpt-6.1-sol"`. Layered writes one into each issue it opens. Without
 # one, Codex runs its own default.
 #
 # Codex only answers people with write access to the repository; the action
@@ -94,15 +94,15 @@ jobs:
           echo "name=$branch" >> "$GITHUB_OUTPUT"
 
       # The last such line wins, which in an issue Layered opened is its own,
-      # after the prompt. Only an OpenAI model's id is taken (gpt-...), so a
-      # prompt's "Model: User" isn't, and only its characters, as the issue is
-      # anyone's who can open one.
+      # after the prompt. The id is quoted, so a prompt's "Model: User" isn't
+      # taken, and only an id's characters are, as the issue is anyone's who
+      # can open one.
       - name: Read the model
         id: model
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          model=$(printf '%s\n' "$ISSUE_BODY" | sed -nE 's/^[[:space:]]*Model:[[:space:]]*(gpt-[A-Za-z0-9._-]+)[[:space:]]*$/\1/p' | tail -n 1)
+          model=$(printf '%s\n' "$ISSUE_BODY" | sed -nE 's#^[[:space:]]*Model:[[:space:]]*"([A-Za-z0-9._/:-]+)"[[:space:]]*$#\1#p' | tail -n 1)
           echo "id=$model" >> "$GITHUB_OUTPUT"
 
       - name: Run Codex
