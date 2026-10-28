@@ -157,11 +157,11 @@ Claude acts with the workflow's `GITHUB_TOKEN`, so the Claude GitHub App doesn't
 
 ## Working with opencode on GitHub
 
-`.github/workflows/opencode.yml` runs [opencode](https://opencode.ai/docs/github/) when someone mentions `/opencode` in an issue, a pull request's description, a comment or a review comment. On a pull request it pushes to the pull request's own branch; on an issue it pushes a new branch and opens a pull request that closes the issue. It's configured with:
+`.github/workflows/opencode.yml` runs [opencode](https://opencode.ai/docs/github/) when someone opens an issue that mentions `/opencode`, or mentions it on a pull request: in its description, a comment or a review comment. On an issue it pushes a new branch, `opencode/issue-<number>-<YYYYMMDD-HHMM>`, and answers on the issue, opening no pull request, as Codex does. On a pull request it pushes to the pull request's own branch. A comment on an issue isn't answered. It's configured with:
 
 | Name | Kind | Value |
 | --- | --- | --- |
-| `OPENCODE_MODEL` | Variable | The model, as `provider/model`. Defaults to `anthropic/claude-sonnet-5-5` |
+| `OPENCODE_MODEL` | Variable | The model, as `provider/model`, when the thread names none. Defaults to `anthropic/claude-sonnet-5-5` |
 | `ANTHROPIC_API_KEY` | Secret | An API key from console.anthropic.com, for `anthropic/` models |
 | `OPENAI_API_KEY` | Secret | An API key from platform.openai.com, for `openai/` models |
 | `OPENROUTER_API_KEY` | Secret | An API key from openrouter.ai, for `openrouter/` models |
@@ -174,7 +174,9 @@ Claude acts with the workflow's `GITHUB_TOKEN`, so the Claude GitHub App doesn't
 | `MISTRAL_API_KEY` | Secret | An API key from console.mistral.ai, for `mistral/` models |
 | `OPENCODE_API_KEY` | Secret | An API key from opencode.ai/zen, for `opencode/` models |
 
-Only the key for the model's provider is needed. Avoid OpenCode Zen's free models, some of which may use your data for training while they're free. Models made in China are reached through hosts in the US, EU or UK (Together, Fireworks, Groq, Cerebras, OpenCode Zen) rather than their makers' own APIs. Another provider opencode supports needs its key variable (listed on [models.dev](https://models.dev)) added to the workflow. opencode acts with the workflow's `GITHUB_TOKEN`, so the opencode GitHub App doesn't need installing, but opening pull requests needs "Allow GitHub Actions to create and approve pull requests" (Settings → Actions → General). CI doesn't run on its pushes until someone else pushes.
+A line `Model: "<provider>/<model>"` in the comment that mentions opencode, else in the issue or pull request's description, picks the model for that run, as Layered writes into each issue and pull request it opens. Each key but `OPENCODE_API_KEY` can be given to opencode alone as `OPENCODE_<name>` (e.g. `OPENCODE_ANTHROPIC_API_KEY`), which is read first: Layered writes those, so opencode's keys are kept apart from Claude's and Codex's.
+
+Only the key for the model's provider is needed. Avoid OpenCode Zen's free models, some of which may use your data for training while they're free. Models made in China are reached through hosts in the US, EU or UK (Together, Fireworks, Groq, Cerebras, OpenCode Zen) rather than their makers' own APIs. Another provider opencode supports needs its key variable (listed on [models.dev](https://models.dev)) added to the workflow. opencode acts with the workflow's `GITHUB_TOKEN`, so the opencode GitHub App doesn't need installing. CI doesn't run on its pushes until someone else pushes.
 
 ## Contributing
 
