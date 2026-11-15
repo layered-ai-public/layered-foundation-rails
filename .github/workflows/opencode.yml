@@ -206,7 +206,8 @@ jobs:
 
       # It runs unattended, so it's allowed to edit and run commands without
       # asking. Its reply goes in a file it's told of, which is taken out of
-      # the checkout before anything's committed. The issue goes in by
+      # the checkout before anything's committed; with no file, what it said
+      # is the reply. The issue goes in by
       # environment, never into the script.
       - name: Run opencode
         if: github.event_name == 'issues'
@@ -251,9 +252,16 @@ jobs:
           ${ISSUE_BODY}
           PROMPT
 
-          status=0
-          OPENCODE_CONFIG="$config" opencode run --model "$MODEL" "$(cat "$prompt")" || status=$?
-          if [ -f opencode-reply.md ]; then mv opencode-reply.md "$RUNNER_TEMP/reply.md"; fi
+          # What it says is kept too: asked only to plan or answer, it can
+          # say its reply and write no file.
+          said="$RUNNER_TEMP/said.md"
+          OPENCODE_CONFIG="$config" opencode run --model "$MODEL" "$(cat "$prompt")" | tee "$said"
+          status=${PIPESTATUS[0]}
+          if [ -f opencode-reply.md ]; then
+            mv opencode-reply.md "$RUNNER_TEMP/reply.md"
+          elif [ -s "$said" ]; then
+            sed 's/\x1b\[[0-9;]*m//g' "$said" > "$RUNNER_TEMP/reply.md"
+          fi
           exit $status
 
       - name: Push the change
