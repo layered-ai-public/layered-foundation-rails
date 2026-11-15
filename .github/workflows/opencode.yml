@@ -297,6 +297,10 @@ jobs:
                 echo "Changes are on [\`$BRANCH\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/$BRANCH)."
               fi
             fi
+            # Names the run where GitHub doesn't show it, so Layered can tell
+            # this comment from any other on the issue.
+            echo
+            echo "<!-- $RUN_URL -->"
           } > "$RUNNER_TEMP/answer.md"
           gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/answer.md"
 
