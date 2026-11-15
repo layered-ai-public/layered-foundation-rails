@@ -1,19 +1,33 @@
 name: opencode
 
-# Runs opencode when someone mentions /opencode in a comment on an issue or
-# pull request, a review comment, or a new issue or pull request. opencode
-# answers in the thread and pushes any changes it makes: to the pull request's
-# own branch when there is one, else to a new branch,
-# opencode/issue<number>-<timestamp>, with a pull request that closes the issue.
+# Runs opencode when someone opens an issue that mentions /opencode, or
+# mentions it on a pull request: in its description, a comment or a review
+# comment.
+#
+# On an issue, opencode makes the change, and this workflow pushes it to a new
+# branch, opencode/issue-<number>-<YYYYMMDD-HHMM>, and answers on the issue
+# with what opencode said, as codex.yml does for Codex. It opens no pull
+# request: that's for whoever asked, which Layered does as them, so CI runs on
+# it. On a pull request, opencode's GitHub action answers in the thread and
+# pushes to the pull request's own branch. A comment on an issue isn't
+# answered, as the action would open a pull request for it.
 #
 # It's /opencode rather than @opencode because an @mention notifies whichever
 # GitHub account has that name.
 #
-# The model is the OPENCODE_MODEL repository variable (Settings → Secrets and
-# variables → Actions → Variables), as provider/model, such as
-# anthropic/claude-sonnet-5-5 or openai/gpt-5.5. Unset, it's
-# anthropic/claude-sonnet-5-5. It needs the API key for that provider as a
-# repository secret, one of:
+# A line `Model: "<provider>/<model>"` picks the model opencode runs, e.g.
+# `Model: "anthropic/claude-opus-5-5"` or `Model: "groq/kimi-k3"`. It's read
+# from the comment that mentions opencode, else from the issue or pull
+# request's description, so a thread keeps the model it was started with.
+# Layered writes one into each issue it opens, and each pull request it opens
+# for a change. Without one, it's the OPENCODE_MODEL repository variable
+# (Settings → Secrets and variables → Actions → Variables), else
+# anthropic/claude-sonnet-5-5.
+#
+# It needs the API key for the model's provider as a repository secret, one
+# of these, each of which can be given to opencode alone as OPENCODE_<name>
+# (e.g. OPENCODE_ANTHROPIC_API_KEY), which is read first. Layered writes those,
+# so opencode's keys are kept apart from Claude's and Codex's:
 #   ANTHROPIC_API_KEY   an API key from console.anthropic.com
 #   OPENAI_API_KEY      an API key from platform.openai.com
 #   OPENROUTER_API_KEY  an API key from openrouter.ai
@@ -30,18 +44,19 @@ name: opencode
 # Fireworks, Groq, Cerebras, OpenCode Zen), not through their makers' own APIs, so DeepSeek,
 # Moonshot and Z.ai keys aren't passed.
 #
-# Another provider opencode supports needs its key added to both env blocks
-# below and to the check; models.dev lists each provider's variable name.
+# Another provider opencode supports needs its key added to the three env
+# blocks below and to the check; models.dev lists each provider's variable
+# name.
 #
 # opencode acts on GitHub with this workflow's GITHUB_TOKEN, so the opencode
-# GitHub App doesn't need installing. Opening a pull request with that token
-# needs "Allow GitHub Actions to create and approve pull requests" (Settings →
-# Actions → General). Pushes and pull requests made with it don't trigger other
+# GitHub App doesn't need installing. Pushes made with it don't trigger other
 # workflows, so CI won't run on opencode's work until someone pushes to it.
 #
-# opencode only answers people with write access to the repository; it checks.
-# Like Claude, it runs any shell command and has network access, with the
-# token in the checkout so it can push.
+# opencode only answers people with write access to the repository: on an
+# issue this workflow checks, and on a pull request the action does. Like
+# Claude, it runs any shell command and has network access. On an issue the
+# token isn't left in the checkout, as the push below brings its own; on a
+# pull request it is, for the action to push with.
 
 # Names each run for the issue or pull request it answers, which is how Layered
 # finds the run an issue it opened started.
@@ -62,7 +77,7 @@ on:
 jobs:
   opencode:
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/opencode')) ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/opencode')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '/opencode')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '/opencode') || contains(github.event.issue.title, '/opencode'))) ||
       (github.event_name == 'pull_request' && (contains(github.event.pull_request.body, '/opencode') || contains(github.event.pull_request.title, '/opencode')))
@@ -76,28 +91,49 @@ jobs:
       # An unset secret arrives as an empty string, and opencode's own error for
       # a missing key doesn't say where to set one.
       - name: Check for a key
+        # Each provider's key, opencode's own first, as opencode's steps have them.
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
-          FIREWORKS_API_KEY: ${{ secrets.FIREWORKS_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
-          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.OPENCODE_ANTHROPIC_API_KEY || secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENCODE_OPENAI_API_KEY || secrets.OPENAI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENCODE_OPENROUTER_API_KEY || secrets.OPENROUTER_API_KEY }}
+          TOGETHER_API_KEY: ${{ secrets.OPENCODE_TOGETHER_API_KEY || secrets.TOGETHER_API_KEY }}
+          FIREWORKS_API_KEY: ${{ secrets.OPENCODE_FIREWORKS_API_KEY || secrets.FIREWORKS_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.OPENCODE_GROQ_API_KEY || secrets.GROQ_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.OPENCODE_CEREBRAS_API_KEY || secrets.CEREBRAS_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.OPENCODE_GEMINI_API_KEY || secrets.GEMINI_API_KEY }}
+          XAI_API_KEY: ${{ secrets.OPENCODE_XAI_API_KEY || secrets.XAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.OPENCODE_MISTRAL_API_KEY || secrets.MISTRAL_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         run: |
           if [ -z "$ANTHROPIC_API_KEY$OPENAI_API_KEY$OPENROUTER_API_KEY$TOGETHER_API_KEY$FIREWORKS_API_KEY$GROQ_API_KEY$CEREBRAS_API_KEY$GEMINI_API_KEY$XAI_API_KEY$MISTRAL_API_KEY$OPENCODE_API_KEY" ]; then
-            echo "::error::Set the API key for the provider in OPENCODE_MODEL as a repository secret (Settings → Secrets and variables → Actions → Secrets): ANTHROPIC_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY, TOGETHER_API_KEY, FIREWORKS_API_KEY, GROQ_API_KEY, CEREBRAS_API_KEY, GEMINI_API_KEY, XAI_API_KEY, MISTRAL_API_KEY or OPENCODE_API_KEY."
+            echo "::error::Set the API key for the model's provider as a repository secret (Settings → Secrets and variables → Actions → Secrets): ANTHROPIC_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY, TOGETHER_API_KEY, FIREWORKS_API_KEY, GROQ_API_KEY, CEREBRAS_API_KEY, GEMINI_API_KEY, XAI_API_KEY, MISTRAL_API_KEY or OPENCODE_API_KEY, or any but the last as OPENCODE_<name>."
             exit 1
           fi
 
-      # opencode pushes with the credentials checkout leaves in .git/config.
+      # The action checks this itself on a pull request; on an issue nothing
+      # else would.
+      - name: Check the asker can write
+        if: github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ASKER: ${{ github.event.sender.login }}
+        run: |
+          permission=$(gh api "repos/${GITHUB_REPOSITORY}/collaborators/${ASKER}/permission" --jq .permission)
+          case "$permission" in
+            admin|maintain|write) ;;
+            *)
+              echo "::error::$ASKER can't write to the repository, so opencode won't answer them."
+              exit 1
+              ;;
+          esac
+
+      # On a pull request, opencode pushes with the credentials checkout leaves
+      # in .git/config. On an issue it has no need of them; the push below
+      # brings its own.
       - uses: actions/checkout@v6
         with:
           fetch-depth: 1
+          persist-credentials: ${{ github.event_name != 'issues' }}
 
       # opencode commits as whoever git is configured as, and only configures
       # that itself when it uses the opencode GitHub App.
@@ -133,44 +169,174 @@ jobs:
         with:
           bundler-cache: true
 
-      # For a comment, opencode's instructions are the comment itself. A new
-      # issue or pull request has no comment, so opencode needs a prompt, and
-      # it treats the issue or pull request as context rather than as
-      # instructions. A prompt given for a comment would replace the comment,
-      # so it's only set for these two.
-      - name: Write the prompt
-        id: prompt
+      # The last such line wins, which in an issue Layered opened is its own,
+      # after the prompt. The id is quoted, so a prompt's "Model: User" isn't
+      # taken, and only an id's characters are, as the text is anyone's who
+      # can comment.
+      - name: Read the model
+        id: model
         env:
-          EVENT_NAME: ${{ github.event_name }}
+          ASKED: ${{ github.event.comment.body }}
+          THREAD: ${{ github.event.issue.body || github.event.pull_request.body }}
+          DEFAULT: ${{ vars.OPENCODE_MODEL || 'anthropic/claude-sonnet-5-5' }}
         run: |
-          case "$EVENT_NAME" in
-            issues) subject="issue" ;;
-            pull_request) subject="pull request" ;;
-            *) exit 0 ;;
-          esac
+          model_in() {
+            printf '%s\n' "$1" | sed -nE 's#^[[:space:]]*Model:[[:space:]]*"([A-Za-z0-9._/:-]+)"[[:space:]]*$#\1#p' | tail -n 1
+          }
+          model=$(model_in "$ASKED")
+          [ -n "$model" ] || model=$(model_in "$THREAD")
+          echo "id=${model:-$DEFAULT}" >> "$GITHUB_OUTPUT"
+
+      # On an issue: opencode's CLI makes the change, and the steps after it
+      # push it and answer.
+
+      - name: Start a branch
+        if: github.event_name == 'issues'
+        id: branch
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          branch="opencode/issue-${ISSUE_NUMBER}-$(date -u +%Y%m%d-%H%M)"
+          git checkout -b "$branch"
+          echo "name=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Install opencode
+        if: github.event_name == 'issues'
+        run: npm install --global opencode-ai
+
+      # It runs unattended, so it's allowed to edit and run commands without
+      # asking. Its reply goes in a file it's told of, which is taken out of
+      # the checkout before anything's committed. The issue goes in by
+      # environment, never into the script.
+      - name: Run opencode
+        if: github.event_name == 'issues'
+        id: opencode
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.OPENCODE_ANTHROPIC_API_KEY || secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENCODE_OPENAI_API_KEY || secrets.OPENAI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENCODE_OPENROUTER_API_KEY || secrets.OPENROUTER_API_KEY }}
+          TOGETHER_API_KEY: ${{ secrets.OPENCODE_TOGETHER_API_KEY || secrets.TOGETHER_API_KEY }}
+          FIREWORKS_API_KEY: ${{ secrets.OPENCODE_FIREWORKS_API_KEY || secrets.FIREWORKS_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.OPENCODE_GROQ_API_KEY || secrets.GROQ_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.OPENCODE_CEREBRAS_API_KEY || secrets.CEREBRAS_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.OPENCODE_GEMINI_API_KEY || secrets.GEMINI_API_KEY }}
+          XAI_API_KEY: ${{ secrets.OPENCODE_XAI_API_KEY || secrets.XAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.OPENCODE_MISTRAL_API_KEY || secrets.MISTRAL_API_KEY }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          MODEL: ${{ steps.model.outputs.id }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          config="$RUNNER_TEMP/opencode.json"
+          echo '{"$schema": "https://opencode.ai/config.json", "permission": {"edit": "allow", "bash": "allow"}}' > "$config"
+
+          prompt="$RUNNER_TEMP/prompt.md"
+          cat > "$prompt" <<PROMPT
+          You're working on issue #${ISSUE_NUMBER} in ${GITHUB_REPOSITORY}.
+          Make the change it asks for in this checkout.
+
+          Follow AGENTS.md. Check your work with the tests and rubocop, as bin/ci does.
+
+          Don't commit or push, and don't open a pull request; the workflow commits whatever you leave in the
+          checkout. If the issue only asks a question, answer it and change nothing.
+
+          Finish by writing a short reply for the issue, in Markdown, to opencode-reply.md at the root of the
+          checkout: what you changed and why, or your answer.
+
+          The issue:
+          ----
+          ${ISSUE_TITLE}
+
+          ${ISSUE_BODY}
+          PROMPT
+
+          status=0
+          OPENCODE_CONFIG="$config" opencode run --model "$MODEL" "$(cat "$prompt")" || status=$?
+          if [ -f opencode-reply.md ]; then mv opencode-reply.md "$RUNNER_TEMP/reply.md"; fi
+          exit $status
+
+      - name: Push the change
+        if: github.event_name == 'issues'
+        id: push
+        env:
+          BRANCH: ${{ steps.branch.outputs.name }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m "$ISSUE_TITLE"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/$BRANCH"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Answer on the issue
+        if: always() && github.event_name == 'issues' && steps.opencode.outcome != 'skipped'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          BRANCH: ${{ steps.branch.outputs.name }}
+          PUSHED: ${{ steps.push.outputs.pushed }}
+          OPENCODE_OUTCOME: ${{ steps.opencode.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            if [ "$OPENCODE_OUTCOME" != "success" ]; then
+              echo "opencode didn't finish. See [the run]($RUN_URL)."
+            else
+              if [ -s "$RUNNER_TEMP/reply.md" ]; then
+                cat "$RUNNER_TEMP/reply.md"
+              else
+                echo "opencode finished without a reply. See [the run]($RUN_URL)."
+              fi
+              if [ "$PUSHED" = "true" ]; then
+                echo
+                echo "Changes are on [\`$BRANCH\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/$BRANCH)."
+              fi
+            fi
+          } > "$RUNNER_TEMP/answer.md"
+          gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/answer.md"
+
+      # On a pull request: opencode's GitHub action answers in the thread, and
+      # pushes to the pull request's branch.
+
+      # For a comment, opencode's instructions are the comment itself. A new
+      # pull request has no comment, so opencode needs a prompt, and it treats
+      # the pull request as context rather than as instructions. A prompt
+      # given for a comment would replace the comment, so it's only set for a
+      # new pull request.
+      - name: Write the prompt
+        if: github.event_name == 'pull_request'
+        id: prompt
+        run: |
           {
             echo "text<<PROMPT_EOF"
-            echo "Make the change this $subject asks for. If it only asks a question, answer it and change nothing."
-            echo "End with a short reply for the $subject: what you changed and why, or your answer."
+            echo "Make the change this pull request asks for. If it only asks a question, answer it and change nothing."
+            echo "End with a short reply for the pull request: what you changed and why, or your answer."
             echo "PROMPT_EOF"
           } >> "$GITHUB_OUTPUT"
 
       - uses: anomalyco/opencode/github@latest
+        if: github.event_name != 'issues'
+        # Each provider's key, opencode's own first.
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
-          FIREWORKS_API_KEY: ${{ secrets.FIREWORKS_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
-          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.OPENCODE_ANTHROPIC_API_KEY || secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENCODE_OPENAI_API_KEY || secrets.OPENAI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENCODE_OPENROUTER_API_KEY || secrets.OPENROUTER_API_KEY }}
+          TOGETHER_API_KEY: ${{ secrets.OPENCODE_TOGETHER_API_KEY || secrets.TOGETHER_API_KEY }}
+          FIREWORKS_API_KEY: ${{ secrets.OPENCODE_FIREWORKS_API_KEY || secrets.FIREWORKS_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.OPENCODE_GROQ_API_KEY || secrets.GROQ_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.OPENCODE_CEREBRAS_API_KEY || secrets.CEREBRAS_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.OPENCODE_GEMINI_API_KEY || secrets.GEMINI_API_KEY }}
+          XAI_API_KEY: ${{ secrets.OPENCODE_XAI_API_KEY || secrets.XAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.OPENCODE_MISTRAL_API_KEY || secrets.MISTRAL_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          model: ${{ vars.OPENCODE_MODEL || 'anthropic/claude-sonnet-5-5' }}
+          model: ${{ steps.model.outputs.id }}
           # Skips the opencode GitHub App, and the OIDC token exchange that
           # would need id-token: write.
           use_github_token: true
