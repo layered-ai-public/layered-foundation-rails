@@ -84,6 +84,15 @@ jobs:
         with:
           bundler-cache: true
 
+      # bundler-cache leaves Bundler in deployment mode, which freezes
+      # Gemfile.lock, so a change adding a gem (bundle add) would fail. The
+      # agent's changes go through review and CI, which keep it frozen. The
+      # gems stay where bundler-cache installed them.
+      - name: Let the agent add gems
+        run: |
+          bundle config unset --local deployment
+          bundle config set --local frozen false
+
       - name: Start a branch
         id: branch
         env:

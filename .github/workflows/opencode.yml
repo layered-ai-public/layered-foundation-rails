@@ -169,6 +169,15 @@ jobs:
         with:
           bundler-cache: true
 
+      # bundler-cache leaves Bundler in deployment mode, which freezes
+      # Gemfile.lock, so a change adding a gem (bundle add) would fail. The
+      # agent's changes go through review and CI, which keep it frozen. The
+      # gems stay where bundler-cache installed them.
+      - name: Let the agent add gems
+        run: |
+          bundle config unset --local deployment
+          bundle config set --local frozen false
+
       # The last such line wins, which in an issue Layered opened is its own,
       # after the prompt. The id is quoted, so a prompt's "Model: User" isn't
       # taken, and only an id's characters are, as the text is anyone's who
