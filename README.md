@@ -176,7 +176,13 @@ Claude acts with the workflow's `GITHUB_TOKEN`, so the Claude GitHub App doesn't
 
 A line `Model: "<provider>/<model>"` in the comment that mentions opencode, else in the issue or pull request's description, picks the model for that run, as Layered writes into each issue and pull request it opens. Each key but `OPENCODE_API_KEY` can be given to opencode alone as `OPENCODE_<name>` (e.g. `OPENCODE_ANTHROPIC_API_KEY`), which is read first: Layered writes those, so opencode's keys are kept apart from Claude's and Codex's.
 
-Only the key for the model's provider is needed. Avoid OpenCode Zen's free models, some of which may use your data for training while they're free. Models made in China are reached through hosts in the US, EU or UK (Together, Fireworks, Groq, Cerebras, OpenCode Zen) rather than their makers' own APIs. Another provider opencode supports needs its key variable (listed on [models.dev](https://models.dev)) added to the workflow. opencode acts with the workflow's `GITHUB_TOKEN`, so the opencode GitHub App doesn't need installing. CI doesn't run on its pushes until someone else pushes.
+Only the key for the model's provider is needed. Avoid OpenCode Zen's free models, some of which may use your data for training while they're free. Models made in China are reached through hosts in the US, EU or UK (Together, Fireworks, Groq, Cerebras, OpenCode Zen) rather than their makers' own APIs. Another provider opencode supports needs its key variable (listed on [models.dev](https://models.dev)) added to the shared workflow and passed on by `.github/workflows/opencode.yml` (see [Shared workflows](#shared-workflows)). opencode acts with the workflow's `GITHUB_TOKEN`, so the opencode GitHub App doesn't need installing. CI doesn't run on its pushes until someone else pushes.
+
+## Shared workflows
+
+The workflows in `.github/workflows` are short: each keeps what GitHub needs in the app's own repository (its triggers, the run's name, permissions, concurrency, and the secrets passed on) and calls the matching workflow in [layered-actions-github](https://github.com/layered-ai-public/layered-actions-github) for its steps. Every Layered app calls the same ones, so a fix there reaches them all without a change to each app.
+
+They call the `v1` tag, which moves to each release that works with these files. A change that needs these files changed too, like a new trigger, input or secret, is released as `v2`, which each app takes up by changing `@v1` to `@v2`.
 
 ## Contributing
 

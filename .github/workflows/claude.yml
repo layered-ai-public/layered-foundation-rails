@@ -1,29 +1,15 @@
 name: Claude
 
 # Runs Claude Code when someone mentions @claude in an issue, a pull request's
-# description, a comment or a review. Claude answers in the thread and pushes
-# any changes it makes: to the pull request's own branch when there is one,
-# else to a new branch.
+# description, a comment or a review. It needs the ANTHROPIC_API_KEY or
+# CLAUDE_CODE_OAUTH_TOKEN repository secret, which Layered writes.
 #
-# It needs one of these repository secrets (Settings → Secrets and variables →
-# Actions → Secrets). Layered writes whichever fits the key it's given:
-#   ANTHROPIC_API_KEY        an API key from console.anthropic.com
-#   CLAUDE_CODE_OAUTH_TOKEN  a Pro or Max subscription token, from `claude setup-token`
-#
-# A line `Model: "<id>"` picks the model Claude runs, e.g.
-# `Model: "claude-opus-5-5"`, or an alias like `Model: "opus"`. It's read from
-# the comment or review that mentions Claude, else from the issue or pull
-# request's description, so a thread keeps the model it was started with.
-# Layered writes one into each issue it opens, and each pull request it opens
-# for a change. Without one, Claude Code runs its own default.
-#
-# Claude acts on GitHub with this workflow's GITHUB_TOKEN, so the Claude GitHub
-# App doesn't need installing. Pushes and pull requests made with that token
-# don't trigger other workflows, so CI won't run on Claude's work until someone
-# pushes to it.
+# The steps are in layered-ai-public/layered-actions-github, shared by every
+# Layered app, so a fix there reaches them all. This file keeps what GitHub
+# needs here: the triggers, the run's name, which is how Layered finds the run
+# an issue it opened started, the permissions, and the secrets passed on. See
+# claude.yml there.
 
-# Names each run for the issue or pull request it answers, which is how Layered
-# finds the run an issue it opened started.
 run-name: "Claude on #${{ github.event.issue.number || github.event.pull_request.number }}"
 
 on:
@@ -42,101 +28,13 @@ on:
 
 jobs:
   claude:
-    if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude'))) ||
-      (github.event_name == 'pull_request' && (contains(github.event.pull_request.body, '@claude') || contains(github.event.pull_request.title, '@claude')))
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
+    uses: layered-ai-public/layered-actions-github/.github/workflows/claude.yml@v1
     permissions:
       contents: write
       pull-requests: write
       issues: write
       # Lets Claude read CI results on pull requests.
       actions: read
-    steps:
-      # An unset secret arrives as an empty string, and the action's own error
-      # for that doesn't say where to set one.
-      - name: Check for a key
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-        run: |
-          if [ -z "$ANTHROPIC_API_KEY" ] && [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
-            echo "::error::Set the ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN repository secret (Settings → Secrets and variables → Actions → Secrets)."
-            exit 1
-          fi
-
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-
-      # The runners point apt at Azure's Ubuntu mirror
-      # (azure.archive.ubuntu.com), which is often very slow. Use
-      # archive.ubuntu.com instead.
-      - name: Disable Azure Ubuntu mirror
-        run: |
-          echo 'http://archive.ubuntu.com/ubuntu/' | \
-            sudo tee /etc/apt/apt-mirrors.txt
-
-          sudo sed -i \
-            's|azure.archive.ubuntu.com|archive.ubuntu.com|g' \
-            /etc/apt/sources.list 2>/dev/null || true
-
-          if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
-            sudo sed -i \
-              's|azure.archive.ubuntu.com|archive.ubuntu.com|g' \
-              /etc/apt/sources.list.d/ubuntu.sources
-          fi
-
-      # Claude runs bin/rails, the tests and rubocop as it works. The tests need
-      # what ci.yml's test job installs.
-      - name: Install packages
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips
-
-      - uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-
-      # bundler-cache leaves Bundler in deployment mode, which freezes
-      # Gemfile.lock, so a change adding a gem (bundle add) would fail. The
-      # agent's changes go through review and CI, which keep it frozen. The
-      # gems stay where bundler-cache installed them.
-      - name: Let the agent add gems
-        run: |
-          bundle config unset --local deployment
-          bundle config set --local frozen false
-
-      # The last such line wins, which in an issue Layered opened is its own,
-      # after the prompt. The id is quoted, so a prompt's "Model: User" isn't
-      # taken, and only an id's characters are, as the text is anyone's who
-      # can comment.
-      - name: Read the model
-        id: model
-        env:
-          ASKED: ${{ github.event.comment.body || github.event.review.body }}
-          THREAD: ${{ github.event.issue.body || github.event.pull_request.body }}
-        run: |
-          model_in() {
-            printf '%s\n' "$1" | sed -nE 's#^[[:space:]]*Model:[[:space:]]*"([A-Za-z0-9._/:-]+)"[[:space:]]*$#\1#p' | tail -n 1
-          }
-          model=$(model_in "$ASKED")
-          [ -n "$model" ] || model=$(model_in "$THREAD")
-          echo "id=$model" >> "$GITHUB_OUTPUT"
-
-      - uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # Left empty, the action would fetch a Claude GitHub App token instead.
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # The action allows Claude no shell commands beyond git unless they're
-          # listed. A list of the app's tools still refused ordinary commands,
-          # including a pipe into tail, and it guarded nothing: bundle exec and
-          # bin/rails runner already run any code. What keeps this safe is that
-          # the action only answers people with write access to the repository.
-          claude_args: |
-            --allowedTools "Bash"
-            ${{ steps.model.outputs.id && format('--model {0}', steps.model.outputs.id) || '' }}
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

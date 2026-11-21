@@ -1,5 +1,9 @@
 name: Deploy with Kamal
 
+# The steps are in layered-ai-public/layered-actions-github, shared by every
+# Layered app, so a fix there reaches them all. This file keeps what GitHub
+# needs here: the triggers and concurrency group. See deploy.yml there.
+
 on:
   workflow_dispatch:
     inputs:
@@ -16,66 +20,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
-    timeout-minutes: 30
-    # config/deploy.yml reads these. Layered writes them as variables of the
-    # environment being deployed (Settings → Environments); one set at
-    # repository level is used for any environment that doesn't set its own.
-    # Only a job naming the environment can see its variables.
-    env:
-      KAMAL_DEPLOY_IP: ${{ vars.KAMAL_DEPLOY_IP }}
-      KAMAL_DEPLOY_DOMAIN: ${{ vars.KAMAL_DEPLOY_DOMAIN }}
-    steps:
-      # An unset variable or secret arrives as an empty string, which gets
-      # past ENV.fetch in config/deploy.yml and fails later with a confusing
-      # error. Check up front instead.
-      - name: Check deploy configuration
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
-          DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
-        run: |
-          missing=0
-          for name in KAMAL_DEPLOY_IP KAMAL_DEPLOY_DOMAIN; do
-            if [ -z "${!name}" ]; then
-              echo "::error::Variable $name is not set for the $DEPLOY_ENVIRONMENT environment (Settings → Environments)."
-              missing=1
-            fi
-          done
-          for name in SSH_PRIVATE_KEY RAILS_MASTER_KEY; do
-            if [ -z "${!name}" ]; then
-              echo "::error::Secret $name is not set for the $DEPLOY_ENVIRONMENT environment (Settings → Environments)."
-              missing=1
-            fi
-          done
-          exit $missing
-
-      - uses: actions/checkout@v6
-
-      - uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-
-      # config/deploy.yml takes the key's path from KAMAL_SSH_KEY.
-      - name: Write the deploy key
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          echo "KAMAL_SSH_KEY=$HOME/.ssh/deploy_key" >> "$GITHUB_ENV"
-
-      # .kamal/secrets reads the key from this file.
-      - name: Write the master key
-        env:
-          RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
-        run: echo "$RAILS_MASTER_KEY" > config/master.key
-
-      # setup installs Docker on a fresh server, then deploys. It's safe to
-      # rerun; switch to `deploy` once the server is set up if you like.
-      - name: Deploy
-        env:
-          DESTINATION: ${{ inputs.destination }}
-        run: bin/kamal setup ${DESTINATION:+-d "$DESTINATION"}
+    uses: layered-ai-public/layered-actions-github/.github/workflows/deploy.yml@v1
+    with:
+      environment: ${{ inputs.environment }}
+      destination: ${{ inputs.destination }}
