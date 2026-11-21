@@ -4,6 +4,13 @@ name: Claude
 # description, a comment or a review. It needs the ANTHROPIC_API_KEY or
 # CLAUDE_CODE_OAUTH_TOKEN repository secret, which Layered writes.
 #
+# A member of the app can give Claude a key of their own in Layered, which
+# writes it as the same secret with their GitHub user id on the end (e.g.
+# ANTHROPIC_API_KEY_U12345). Runs they start use it, of either kind, and
+# nothing of the app's alongside it, since Claude prefers an API key to a
+# token. Everyone else's runs use the app's key. Who started the run comes
+# from GitHub, never from anything written in the issue.
+#
 # The steps are in layered-ai-public/layered-actions-github, shared by every
 # Layered app, so a fix there reaches them all. This file keeps what GitHub
 # needs here: the triggers, the run's name, which is how Layered finds the run
@@ -36,5 +43,5 @@ jobs:
       # Lets Claude read CI results on pull requests.
       actions: read
     secrets:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      ANTHROPIC_API_KEY: ${{ !secrets[format('CLAUDE_CODE_OAUTH_TOKEN_U{0}', github.actor_id)] && (secrets[format('ANTHROPIC_API_KEY_U{0}', github.actor_id)] || secrets.ANTHROPIC_API_KEY) || '' }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ !secrets[format('ANTHROPIC_API_KEY_U{0}', github.actor_id)] && (secrets[format('CLAUDE_CODE_OAUTH_TOKEN_U{0}', github.actor_id)] || secrets.CLAUDE_CODE_OAUTH_TOKEN) || '' }}

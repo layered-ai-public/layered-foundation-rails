@@ -6,6 +6,12 @@ name: opencode
 # secret, which Layered writes: one of those below, each of which can be given
 # to opencode alone as OPENCODE_<name>.
 #
+# A member of the app can give opencode keys of their own in Layered, which
+# writes each as OPENCODE_<name> with their GitHub user id on the end (e.g.
+# OPENCODE_ANTHROPIC_API_KEY_U12345). Runs they start use theirs for each
+# provider they've given one for, and the app's for the rest. Who started the
+# run comes from GitHub, never from the issue.
+#
 # The steps are in layered-ai-public/layered-actions-github, shared by every
 # Layered app, so a fix there reaches them all. This file keeps what GitHub
 # needs here: the triggers, the run's name, which is how Layered finds the run
@@ -34,16 +40,16 @@ jobs:
       pull-requests: write
       issues: write
     secrets:
-      OPENCODE_ANTHROPIC_API_KEY: ${{ secrets.OPENCODE_ANTHROPIC_API_KEY }}
-      OPENCODE_OPENAI_API_KEY: ${{ secrets.OPENCODE_OPENAI_API_KEY }}
-      OPENCODE_OPENROUTER_API_KEY: ${{ secrets.OPENCODE_OPENROUTER_API_KEY }}
-      OPENCODE_TOGETHER_API_KEY: ${{ secrets.OPENCODE_TOGETHER_API_KEY }}
-      OPENCODE_FIREWORKS_API_KEY: ${{ secrets.OPENCODE_FIREWORKS_API_KEY }}
-      OPENCODE_GROQ_API_KEY: ${{ secrets.OPENCODE_GROQ_API_KEY }}
-      OPENCODE_CEREBRAS_API_KEY: ${{ secrets.OPENCODE_CEREBRAS_API_KEY }}
-      OPENCODE_GEMINI_API_KEY: ${{ secrets.OPENCODE_GEMINI_API_KEY }}
-      OPENCODE_XAI_API_KEY: ${{ secrets.OPENCODE_XAI_API_KEY }}
-      OPENCODE_MISTRAL_API_KEY: ${{ secrets.OPENCODE_MISTRAL_API_KEY }}
+      OPENCODE_ANTHROPIC_API_KEY: ${{ secrets[format('OPENCODE_ANTHROPIC_API_KEY_U{0}', github.actor_id)] || secrets.OPENCODE_ANTHROPIC_API_KEY }}
+      OPENCODE_OPENAI_API_KEY: ${{ secrets[format('OPENCODE_OPENAI_API_KEY_U{0}', github.actor_id)] || secrets.OPENCODE_OPENAI_API_KEY }}
+      OPENCODE_OPENROUTER_API_KEY: ${{ secrets[format('OPENCODE_OPENROUTER_API_KEY_U{0}', github.actor_id)] || secrets.OPENCODE_OPENROUTER_API_KEY }}
+      OPENCODE_TOGETHER_API_KEY: ${{ secrets[format('OPENCODE_TOGETHER_API_KEY_U{0}', github.actor_id)] || secrets.OPENCODE_TOGETHER_API_KEY }}
+      OPENCODE_FIREWORKS_API_KEY: ${{ secrets[format('OPENCODE_FIREWORKS_API_KEY_U{0}', github.actor_id)] || secrets.OPENCODE_FIREWORKS_API_KEY }}
+      OPENCODE_GROQ_API_KEY: ${{ secrets[format('OPENCODE_GROQ_API_KEY_U{0}', github.actor_id)] || secrets.OPENCODE_GROQ_API_KEY }}
+      OPENCODE_CEREBRAS_API_KEY: ${{ secrets[format('OPENCODE_CEREBRAS_API_KEY_U{0}', github.actor_id)] || secrets.OPENCODE_CEREBRAS_API_KEY }}
+      OPENCODE_GEMINI_API_KEY: ${{ secrets[format('OPENCODE_GEMINI_API_KEY_U{0}', github.actor_id)] || secrets.OPENCODE_GEMINI_API_KEY }}
+      OPENCODE_XAI_API_KEY: ${{ secrets[format('OPENCODE_XAI_API_KEY_U{0}', github.actor_id)] || secrets.OPENCODE_XAI_API_KEY }}
+      OPENCODE_MISTRAL_API_KEY: ${{ secrets[format('OPENCODE_MISTRAL_API_KEY_U{0}', github.actor_id)] || secrets.OPENCODE_MISTRAL_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
