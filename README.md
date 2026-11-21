@@ -180,7 +180,9 @@ Only the key for the model's provider is needed. Avoid OpenCode Zen's free model
 
 ## Shared workflows
 
-The workflows in `.github/workflows` are short: each keeps what GitHub needs in the app's own repository (its triggers, the run's name, permissions, concurrency, and the secrets passed on) and calls the matching workflow in [layered-actions-github](https://github.com/layered-ai-public/layered-actions-github) for its steps. Every Layered app calls the same ones, so a fix there reaches them all without a change to each app.
+The workflows in `.github/workflows` are short: each keeps what GitHub needs in the app's own repository (its triggers, the run's name, permissions, concurrency, and the secrets passed on) and calls the matching workflow or action in [layered-actions-github](https://github.com/layered-ai-public/layered-actions-github) for its steps. Every Layered app calls the same ones, so a fix there reaches them all without a change to each app.
+
+`deploy.yml`, `remove.yml` and `server-keys.yml` keep their job too, and use an action for its steps. Only a job in the app's own repository can read the secrets of the GitHub Environment it deploys, so the job names the environment here and passes them on.
 
 They call the `v1` tag, which moves to each release that works with these files. A change that needs these files changed too, like a new trigger, input or secret, is released as `v2`, which each app takes up by changing `@v1` to `@v2`.
 

@@ -7,7 +7,9 @@ run-name: Authorize deploy keys on ${{ inputs.server }} (${{ inputs.request }})
 # The steps are in layered-ai-public/layered-actions-github, shared by every
 # Layered app, so a fix there reaches them all. This file keeps what GitHub
 # needs here: the triggers, the run's name, which is how Layered finds the
-# run, and the concurrency group. See server-keys.yml there.
+# run, the concurrency group and the job. The job is here because only a job
+# in this repository can read the environment's secrets, which it passes on.
+# See server-keys/action.yml there.
 
 on:
   workflow_dispatch:
@@ -34,9 +36,19 @@ concurrency:
 
 jobs:
   authorize:
-    uses: layered-ai-public/layered-actions-github/.github/workflows/server-keys.yml@v1
-    with:
-      environment: ${{ inputs.environment }}
-      server: ${{ inputs.server }}
-      project: ${{ inputs.project }}
-      authorized_keys: ${{ inputs.authorized_keys }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 5
+    # config/deploy.yml reads these. Layered writes them as variables of the
+    # environment (Settings → Environments); one set at repository level is
+    # used for any environment that doesn't set its own.
+    env:
+      KAMAL_DEPLOY_IP: ${{ vars.KAMAL_DEPLOY_IP }}
+      KAMAL_DEPLOY_DOMAIN: ${{ vars.KAMAL_DEPLOY_DOMAIN }}
+    steps:
+      - uses: layered-ai-public/layered-actions-github/server-keys@v1
+        with:
+          server: ${{ inputs.server }}
+          project: ${{ inputs.project }}
+          authorized_keys: ${{ inputs.authorized_keys }}
+          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
