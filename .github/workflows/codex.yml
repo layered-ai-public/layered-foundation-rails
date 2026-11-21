@@ -1,26 +1,14 @@
 name: Codex
 
-# Runs Codex when someone opens an issue that mentions @codex. Codex makes the
-# change, and this workflow pushes it to a new branch,
-# codex/issue-<number>-<YYYYMMDD-HHMM>, and answers on the issue with what
-# Codex said.
+# Runs Codex when someone opens an issue that mentions @codex. It needs the
+# OPENAI_API_KEY repository secret, which Layered writes.
 #
-# It needs the OPENAI_API_KEY repository secret (Settings → Secrets and
-# variables → Actions → Secrets): an API key from platform.openai.com. Layered
-# writes it when Codex is added to the app with a key.
-#
-# A line `Model: "<id>"` in the issue picks the model Codex runs, e.g.
-# `Model: "gpt-6.1-sol"`. Layered writes one into each issue it opens. Without
-# one, Codex runs its own default.
-#
-# Codex only answers people with write access to the repository; the action
-# checks. It runs without network access, so everything it needs is installed
-# before it starts. Pushes made with this workflow's GITHUB_TOKEN don't
-# trigger other workflows, so CI won't run on Codex's branch until someone
-# pushes to it.
+# The steps are in layered-ai-public/layered-actions-github, shared by every
+# Layered app, so a fix there reaches them all. This file keeps what GitHub
+# needs here: the triggers, the run's name, which is how Layered finds the run
+# an issue it opened started, the permissions, and the secrets passed on. See
+# codex.yml there.
 
-# Names each run for the issue it answers, which is how Layered finds the run
-# an issue it opened started.
 run-name: "Codex on #${{ github.event.issue.number }}"
 
 on:
@@ -29,158 +17,9 @@ on:
 
 jobs:
   codex:
-    if: contains(github.event.issue.body, '@codex') || contains(github.event.issue.title, '@codex')
-    # The action can't drop sudo on Ubuntu 26.04, which ubuntu-latest now is:
-    # https://github.com/openai/codex-action/issues/188. Move back to
-    # ubuntu-latest once that's fixed.
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    uses: layered-ai-public/layered-actions-github/.github/workflows/codex.yml@v1
     permissions:
       contents: write
       issues: write
-    steps:
-      # An unset secret arrives as an empty string, and the action's own error
-      # for that doesn't say where to set one.
-      - name: Check for a key
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          if [ -z "$OPENAI_API_KEY" ]; then
-            echo "::error::Set the OPENAI_API_KEY repository secret (Settings → Secrets and variables → Actions → Secrets)."
-            exit 1
-          fi
-
-      # Codex has no need of the token, so it isn't left in the checkout for
-      # it to find; the push below brings its own.
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-          persist-credentials: false
-
-      # The runners point apt at Azure's Ubuntu mirror
-      # (azure.archive.ubuntu.com), which is often very slow. Use
-      # archive.ubuntu.com instead.
-      - name: Disable Azure Ubuntu mirror
-        run: |
-          echo 'http://archive.ubuntu.com/ubuntu/' | \
-            sudo tee /etc/apt/apt-mirrors.txt
-
-          sudo sed -i \
-            's|azure.archive.ubuntu.com|archive.ubuntu.com|g' \
-            /etc/apt/sources.list 2>/dev/null || true
-
-          if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
-            sudo sed -i \
-              's|azure.archive.ubuntu.com|archive.ubuntu.com|g' \
-              /etc/apt/sources.list.d/ubuntu.sources
-          fi
-
-      # Codex runs bin/rails, the tests and rubocop as it works, with no
-      # network. The tests need what ci.yml's test job installs.
-      - name: Install packages
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips
-
-      - uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-
-      # bundler-cache leaves Bundler in deployment mode, which freezes
-      # Gemfile.lock, so a change adding a gem (bundle add) would fail. The
-      # agent's changes go through review and CI, which keep it frozen. The
-      # gems stay where bundler-cache installed them.
-      - name: Let the agent add gems
-        run: |
-          bundle config unset --local deployment
-          bundle config set --local frozen false
-
-      - name: Start a branch
-        id: branch
-        env:
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-        run: |
-          branch="codex/issue-${ISSUE_NUMBER}-$(date -u +%Y%m%d-%H%M)"
-          git checkout -b "$branch"
-          echo "name=$branch" >> "$GITHUB_OUTPUT"
-
-      # The last such line wins, which in an issue Layered opened is its own,
-      # after the prompt. The id is quoted, so a prompt's "Model: User" isn't
-      # taken, and only an id's characters are, as the issue is anyone's who
-      # can open one.
-      - name: Read the model
-        id: model
-        env:
-          ISSUE_BODY: ${{ github.event.issue.body }}
-        run: |
-          model=$(printf '%s\n' "$ISSUE_BODY" | sed -nE 's#^[[:space:]]*Model:[[:space:]]*"([A-Za-z0-9._/:-]+)"[[:space:]]*$#\1#p' | tail -n 1)
-          echo "id=$model" >> "$GITHUB_OUTPUT"
-
-      - name: Run Codex
-        id: codex
-        uses: openai/codex-action@v1
-        with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          # Empty, as when the issue names none, is the action's own default.
-          model: ${{ steps.model.outputs.id }}
-          permission-profile: ":workspace"
-          prompt: |
-            You're working on issue #${{ github.event.issue.number }} in ${{ github.repository }}.
-            Make the change it asks for in this checkout.
-
-            Follow AGENTS.md. Check your work with the tests and rubocop, as bin/ci does.
-
-            Don't commit or push; the workflow commits whatever you leave in the checkout. If the issue
-            only asks a question, answer it and change nothing.
-
-            End with a short reply for the issue: what you changed and why, or your answer.
-
-            The issue:
-            ----
-            ${{ github.event.issue.title }}
-
-            ${{ github.event.issue.body }}
-
-      - name: Push the change
-        id: push
-        env:
-          BRANCH: ${{ steps.branch.outputs.name }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git add -A
-          if git diff --cached --quiet; then
-            echo "pushed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "$ISSUE_TITLE" -m "Co-authored-by: Codex <codex@openai.com>"
-          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/$BRANCH"
-          echo "pushed=true" >> "$GITHUB_OUTPUT"
-
-      - name: Answer on the issue
-        if: always() && steps.codex.outcome != 'skipped'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          BRANCH: ${{ steps.branch.outputs.name }}
-          PUSHED: ${{ steps.push.outputs.pushed }}
-          CODEX_OUTCOME: ${{ steps.codex.outcome }}
-          FINAL_MESSAGE: ${{ steps.codex.outputs.final-message }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          {
-            if [ "$CODEX_OUTCOME" != "success" ]; then
-              echo "Codex didn't finish. See [the run]($RUN_URL)."
-            else
-              echo "$FINAL_MESSAGE"
-              if [ "$PUSHED" = "true" ]; then
-                echo
-                echo "Changes are on [\`$BRANCH\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/$BRANCH)."
-              fi
-            fi
-            # Names the run where GitHub doesn't show it, so Layered can tell
-            # this comment from any other on the issue.
-            echo
-            echo "<!-- $RUN_URL -->"
-          } > reply.md
-          gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file reply.md
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
