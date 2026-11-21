@@ -3,6 +3,11 @@ name: Codex
 # Runs Codex when someone opens an issue that mentions @codex. It needs the
 # OPENAI_API_KEY repository secret, which Layered writes.
 #
+# A member of the app can give Codex a key of their own in Layered, which
+# writes it as the same secret with their GitHub user id on the end (e.g.
+# OPENAI_API_KEY_U12345). Runs they start use it; everyone else's use the
+# app's. Who started the run comes from GitHub, never from the issue.
+#
 # The steps are in layered-ai-public/layered-actions-github, shared by every
 # Layered app, so a fix there reaches them all. This file keeps what GitHub
 # needs here: the triggers, the run's name, which is how Layered finds the run
@@ -22,4 +27,4 @@ jobs:
       contents: write
       issues: write
     secrets:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets[format('OPENAI_API_KEY_U{0}', github.actor_id)] || secrets.OPENAI_API_KEY }}
