@@ -26,5 +26,8 @@ jobs:
     permissions:
       contents: write
       issues: write
+      # Proves to Layered which repository this is, so the agent can read the
+      # app's other repositories beside this one.
+      id-token: write
     secrets:
       OPENAI_API_KEY: ${{ secrets[format('OPENAI_API_KEY_U{0}', github.actor_id)] || secrets.OPENAI_API_KEY }}

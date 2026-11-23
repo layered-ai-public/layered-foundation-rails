@@ -42,6 +42,9 @@ jobs:
       issues: write
       # Lets Claude read CI results on pull requests.
       actions: read
+      # Proves to Layered which repository this is, so the agent can read the
+      # app's other repositories beside this one.
+      id-token: write
     secrets:
       ANTHROPIC_API_KEY: ${{ !secrets[format('CLAUDE_CODE_OAUTH_TOKEN_U{0}', github.actor_id)] && (secrets[format('ANTHROPIC_API_KEY_U{0}', github.actor_id)] || secrets.ANTHROPIC_API_KEY) || '' }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ !secrets[format('ANTHROPIC_API_KEY_U{0}', github.actor_id)] && (secrets[format('CLAUDE_CODE_OAUTH_TOKEN_U{0}', github.actor_id)] || secrets.CLAUDE_CODE_OAUTH_TOKEN) || '' }}

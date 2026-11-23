@@ -39,6 +39,9 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
+      # Proves to Layered which repository this is, so the agent can read the
+      # app's other repositories beside this one.
+      id-token: write
     secrets:
       OPENCODE_ANTHROPIC_API_KEY: ${{ secrets[format('OPENCODE_ANTHROPIC_API_KEY_U{0}', github.actor_id)] || secrets.OPENCODE_ANTHROPIC_API_KEY }}
       OPENCODE_OPENAI_API_KEY: ${{ secrets[format('OPENCODE_OPENAI_API_KEY_U{0}', github.actor_id)] || secrets.OPENCODE_OPENAI_API_KEY }}
